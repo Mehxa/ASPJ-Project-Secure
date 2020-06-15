@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for
 import mysql.connector
 
+# connection name = secureblogconn
 db = mysql.connector.connect(
     host="localhost",
-    user="ASPJuser",
-    password="P@55w0rD",
-    database="blogdb"
+    user="secureASPJuser",
+    password="P@ssw0rD",
+    database="secureblogdb"
 )
 
 mycursor =db.cursor()

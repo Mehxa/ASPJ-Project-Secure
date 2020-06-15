@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- Bootstrap CSS 4.3.1 -->
+    <link rel="stylesheet" href="/static/bootstrap-4.3.1-dist/css/bootstrap.min.css">
+    <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">
+
+
+    {% block style %} {% endblock %}
+</head>
+<body>
+    {% block navbar %}
+        {%include 'includes/_navbar.html'%}
+    {% endblock %}
+
+    {% block content %}
+    {% endblock %}
+
+    <!-- jQuery 3.3.1 + Poppe.js 1.14.7 + Bootstrap JavaScript Plugins 4.3.1 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="/static/bootstrap-4.3.1-dist/jquery-3.4.1.min.js"></script>
+    <script src="/static/bootstrap-4.3.1-dist/js/bootstrap.min.js"></script>
+    {% block scripts %}
+
+    {% endblock %}
+</body>
+</html>

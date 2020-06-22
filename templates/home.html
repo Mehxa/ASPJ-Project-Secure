@@ -1,29 +1,77 @@
 {% extends "base.html" %}
-{% block title %} Blog Home {% endblock %}
+{% block title %}Home{% endblock %}
 
 {% block style %}
 <link rel="stylesheet" href="/static/styles/home.css">
+<link rel="stylesheet" href="/static/styles/postMeta.css">
 {% endblock %}
+
 {% block content %}
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-8 col-md-10 mx-auto">
-        <div class="post-preview">
-          <a href="post.html">
-            <h2 class="post-title">
-              Man must explore, and this is exploration at its greatest
-            </h2>
-            <h3 class="post-subtitle">
-              Problems look mighty small from 150 miles up
-            </h3>
-          </a>
-          <p class="post-meta">Posted by
-            <a href="#">Whichever user</a>
-            on September 24, 2019</p>
-        </div>
-        <hr>
-      </div>
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-md-12">
+      {{ flash() }}
     </div>
-    <div class="btn btn-danger post mx-auto" type="submit">Add Post</div>
-  </div>
+
+    <div class="col-md-3">
+      <div class="sticky-top">
+        <div>
+          <a href="/addPost" class="btn btn-danger w-100" style="margin-top: 15px;">Add Post</a>
+        </div>
+
+        <div class="mt-3" id="trending-topics">
+          <p class="font-weight-bold my-3">
+            Trending Topics
+          </p>
+
+          <hr class="mx-auto">
+
+          <p class="topic align-middle m-0">
+            <span>#1</span>
+            Python
+          </p>
+
+          <p class="topic align-middle m-0">
+            <span>#2</span>
+            Java
+          </p>
+
+          <p class="topic align-middle m-0">
+            <span>#3</span>
+            Stack
+          </p>
+        </div> <!--Trending Topics-->
+      </div> <!--Stick--->
+    </div> <!--Column-->
+
+
+    <div class="col-md-9"> <!--For all the posts-->
+
+      {% for post in recentPosts %}
+        <div class="post-preview">
+          <a href="/viewPost/{{ post.PostID }}">
+            <h1 class="post-title">
+              {{ post.Title }}
+            </h1>
+            <h2 class="post-subtitle">
+              {{ post.Content }} <span style="color: #6a6a6a; font-size: 14px;">... See More</span>
+            </h2>
+          </a>
+          <span class="post-meta">Posted by <a href="#">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="#">{{ post.Topic }}</a></span>
+
+          <span class="post-votes ml-auto float-right">
+            <a href="#"><i class="fa fa-arrow-up"></i></a>
+            <span id="postTotalVotes">{{ post.TotalVotes }}</span>
+            <a href="#"><i class="fa fa-arrow-down"></i></a>
+          </span> <!--Votes-->
+        </div> <!--Post-->
+      {% endfor %}
+
+        <div>
+          <a href="/topics" class="btn btn-danger w-100">View more posts</a>
+        </div>
+    </div> <!--Column-->
+
+  </div> <!--Row-->
+</div> <!--Container-->
 {% endblock %}

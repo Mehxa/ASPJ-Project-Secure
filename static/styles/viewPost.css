@@ -6,25 +6,38 @@ hr {
   margin: 0;
 }
 
-#trending-topics {
-  background-color: #fff;
-  padding: 5px 0px;
+/* Comment */
+.comment p {
+  margin: 0px;
 }
 
-#trending-topics p {
-  padding-left: 15px;
+.comment-meta {
+  font-size: 14px;
+  font-style: italic;
+  margin-top: 0;
+  margin-bottom: 5px;
+  color: #868e96;
 }
 
-.topic {
+.comment-meta > a {
+  text-decoration: none;
+  color: #212529;
+}
+
+.comment-meta > a:focus, .comment-meta > a:hover {
+  text-decoration: underline;
+  color: #0085A1;
+}
+
+.comment > .sub-comment {
+  border-left: 3px solid #ccc;
+  margin-top: 10px;
   padding: 5px 10px;
 }
 
-p.topic span {
-  font-size: 18px;
-  color: #767e86;
-}
+/* Post */
 
-.post-preview {
+.post-preview, .comment {
   background-color: #fff;
   margin: 15px 0px;
   padding: 10px 25px;
@@ -35,22 +48,17 @@ p.topic span {
   background-color: #f8f8f8;
 }
 
-.post-preview > a {
+.post-preview {
   color: #212529;
 }
 
-.post-preview > a:hover, .post-preview > a:hover {
-  text-decoration: none;
-  color: #0085A1;
-}
-
-.post-preview > a > .post-title {
-  font-size: 20px;
-  margin-top: 30px;
+.post-preview > .post-title {
+  font-size: 25px;
+  margin-top: 25px;
   margin-bottom: 10px;
 }
 
-.post-preview > a > .post-subtitle {
+.post-preview > .post-text {
   font-size: 16px;
   font-weight: 400;
   margin: 0 0 10px;
@@ -71,10 +79,4 @@ p.topic span {
 .post-preview > .post-meta > a:focus, .post-preview > .post-meta > a:hover {
   text-decoration: underline;
   color: #0085A1;
-}
-
-@media only screen and (min-width: 768px) {
-  .post-preview > a > .post-title {
-    font-size: 25px;
-  }
 }

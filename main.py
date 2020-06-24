@@ -25,8 +25,8 @@ Uncomment the account that you would like to use. To run the program as not logg
 # sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
 # sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mexha', 'isAdmin': 1}
 # sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
-sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
+# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
+sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
 # sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
 # sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
 # sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
@@ -58,23 +58,26 @@ def viewPost(postID):
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " WHERE PostID=" + str(postID)
-    dictCursor.execute(sql)
+    sql += " WHERE PostID=%s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
-    sql += " WHERE comment.PostID=" + str(postID) + " AND comment.RepliedID IS NULL"
-    dictCursor.execute(sql)
+    sql += " WHERE comment.PostID=%s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
 
-        sql = "SELECT comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
-        sql += " INNER JOIN user ON comment.UserID=user.UserID"
-        sql += " WHERE comment.PostID=" + str(postID) + " AND comment.RepliedID=" + str(comment['CommentID'])
-        dictCursor.execute(sql)
+        sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
+        sql += " INNER JOIN user ON reply.UserID=user.UserID"
+        sql += " WHERE reply.CommentID=%s"
+        val = (comment['CommentID'],)
+        dictCursor.execute(sql, val)
         replyList = dictCursor.fetchall()
         comment['ReplyList'] = replyList
 
@@ -83,8 +86,8 @@ def viewPost(postID):
 
     if request.method == 'POST' and commentForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-        sql = 'INSERT INTO comment (PostID, UserID, RepliedID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-        val = (postID, sessionInfo['currentUserID'], None, commentForm.comment.data, dateTime, 0, 0)
+        sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
+        val = (postID, sessionInfo['currentUserID'], commentForm.comment.data, dateTime, 0, 0)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Comment posted!', 'success')
@@ -92,9 +95,8 @@ def viewPost(postID):
 
     if request.method == 'POST' and replyForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-        print(replyForm.repliedID.data, '>>>>>>>>>>>>>>>>>>>>>>>')
-        sql = 'INSERT INTO comment (PostID, UserID, RepliedID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-        val = (postID, sessionInfo['currentUserID'], replyForm.repliedID.data, replyForm.reply.data, dateTime, 0, 0)
+        sql = 'INSERT INTO reply (UserID, CommentID, Content, DateTimePosted) VALUES (%s, %s, %s, %s)'
+        val = (sessionInfo['currentUserID'], replyForm.repliedID.data, replyForm.reply.data, dateTime)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Comment posted!', 'success')
@@ -146,7 +148,7 @@ def feedback():
 def login():
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
-        sql = "SELECT UserID, Username, isAdmin FROM user WHERE Username=%s AND Password=%s"
+        sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
         val = (loginForm.username.data, loginForm.password.data)
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
@@ -156,7 +158,6 @@ def login():
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser['UserID'])
             sessionInfo['username'] = findUser['Username']
-            sessionInfo['isAdmin'] = findUser['isAdmin']
             flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home') # Change this later to redirect to profile page
 
@@ -174,11 +175,8 @@ def signUp():
     signUpForm = Forms.SignUpForm(request.form)
 
     if request.method == 'POST' and signUpForm.validate():
-        if not(re.search('^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$', signUpForm.email.data)):
-            signUpForm.email.errors.append('Invalid email address.')
-
-        sql = 'INSERT INTO user (Name, Email, Username, Password, isAdmin) VALUES (%s, %s, %s, %s, %s)'
-        val = (signUpForm.name.data, signUpForm.email.data, signUpForm.username.data, signUpForm.password.data, 0)
+        sql = 'INSERT INTO user (Email, Username, Password, Birthday) VALUES (%s, %s, %s, %s)'
+        val = (signUpForm.email.data, signUpForm.username.data, signUpForm.password.data, signUpForm.dob.data)
         try:
             tupleCursor.execute(sql, val)
             db.commit()

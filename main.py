@@ -31,12 +31,25 @@ sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcocon
 # sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
 # sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
 
+def get_all_topics(option):
+    sql = "SELECT TopicID, Content FROM topic ORDER BY Content"
+    tupleCursor.execute(sql)
+    listOfTopics = tupleCursor.fetchall()
+    if option=='all':
+        listOfTopics.insert(0, (0, 'All Topics'))
+    return listOfTopics
+
 @app.route('/')
 def main():
     return redirect("/home")
 
-@app.route('/home', methods=["GET"])
+@app.route('/home', methods=["GET", "POST"])
 def home():
+    searchBarForm = Forms.SearchBarForm(request.form)
+    searchBarForm.topic.choices = get_all_topics('all')
+    if request.method == 'POST' and searchBarForm.validate():
+        return redirect(url_for('searchPosts', searchQuery = searchBarForm.searchQuery.data, topic = searchBarForm.topic.data))
+
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
@@ -48,7 +61,42 @@ def home():
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
 
-    return render_template('home.html', currentPage='home', **sessionInfo, recentPosts = recentPosts)
+    return render_template('home.html', currentPage='home', **sessionInfo, searchBarForm = searchBarForm, recentPosts = recentPosts)
+
+@app.route('/searchPosts', methods=["GET", "POST"])
+def searchPosts():
+    searchBarForm = Forms.SearchBarForm(request.form)
+    searchBarForm.topic.choices = get_all_topics('all')
+    if request.method == 'POST' and searchBarForm.validate():
+        return redirect(url_for('searchPosts', searchQuery = searchBarForm.searchQuery.data, topic = searchBarForm.topic.data))
+
+    searchQuery = request.args.get('searchQuery', default='')
+    searchBarForm.searchQuery.data = searchQuery
+
+    searchTopic = request.args.get('topic', default='0')
+    searchBarForm.topic.data = int(searchTopic)
+
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " WHERE post.Title LIKE %s"
+
+    searchQuery = "%" + searchQuery + "%"
+
+    if searchTopic!='0':
+        sql += " AND topic.TopicID=%s"
+        val = (searchQuery, searchTopic)
+    else:
+        val = (searchQuery,)
+
+    dictCursor.execute(sql, val)
+    relatedPosts = dictCursor.fetchall()
+    for post in relatedPosts:
+        post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+        post['Content'] = post['Content'][:200]
+
+    return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
+
 
 @app.route('/viewPost/<int:postID>', methods=["GET", "POST"])
 def viewPost(postID):

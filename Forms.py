@@ -3,6 +3,9 @@ from wtforms.fields import DateField
 from wtforms_components import DateRange
 from datetime import date
 
+class SearchBarForm(Form):
+    searchQuery = StringField('Search Query', render_kw={"placeholder": "Search for a post..."})
+    topic = SelectField('Topic', coerce=int)
 
 class FeedbackForm(Form):
     reason = StringField('Reason', [validators.DataRequired()], render_kw={"placeholder": "e.g. Feedback regarding post moderation"})

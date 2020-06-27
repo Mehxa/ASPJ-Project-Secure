@@ -20,6 +20,12 @@ body {
   color: #801b1b;
 }
 
+.flash.alert-warning {
+  background-color:#f6f7b4;
+  border: 1px solid #cf8f8f;
+  color: #801b1b;
+}
+
 
 /* Navbar */
 .navbar {

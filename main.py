@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 import mysql.connector, re
 import Forms
 from datetime import datetime
+from functools import wraps
 
 db = mysql.connector.connect(
     host="localhost",
@@ -20,16 +21,36 @@ app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
 """ For testing purposes only. To make it convenient cause I can't remember all the account names.
 Uncomment the account that you would like to use. To run the program as not logged in, run the first one."""
-# sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mexha', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
-sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
+# sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': False}
+# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': True}
+# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': True}
+# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mexha', 'isAdmin': True}
+# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': True}
+# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': False}
+sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': False}
+# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': False}
+# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': False}
+# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': False}
+
+def login_required(function_to_wrap):
+    @wraps(function_to_wrap)
+    def wrap(*args, **kwargs):
+        if sessionInfo['login']==True:
+            return function_to_wrap(*args, **kwargs)
+        else:
+            flash("Please login to continue.", "warning")
+            return redirect('/login')
+    return wrap
+
+def admin_required(function_to_wrap):
+    @wraps(function_to_wrap)
+    def wrap(*args, **kwargs):
+        if sessionInfo['isAdmin']==1:
+            return function_to_wrap(*args, **kwargs)
+        else:
+            flash("Unauthorised user. Access denied.", "danger")
+            return redirect(sessionInfo['prevPage'])
+    return wrap
 
 def get_all_topics(option):
     sql = "SELECT TopicID, Content FROM topic ORDER BY Content"
@@ -45,6 +66,7 @@ def main():
 
 @app.route('/home', methods=["GET", "POST"])
 def home():
+    sessionInfo['prevPage']= request.url_rule
     searchBarForm = Forms.SearchBarForm(request.form)
     searchBarForm.topic.choices = get_all_topics('all')
     if request.method == 'POST' and searchBarForm.validate():
@@ -65,6 +87,7 @@ def home():
 
 @app.route('/searchPosts', methods=["GET", "POST"])
 def searchPosts():
+    sessionInfo['prevPage']= request.url_rule
     searchBarForm = Forms.SearchBarForm(request.form)
     searchBarForm.topic.choices = get_all_topics('all')
     if request.method == 'POST' and searchBarForm.validate():
@@ -97,12 +120,9 @@ def searchPosts():
 
     return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
 
-
 @app.route('/viewPost/<int:postID>', methods=["GET", "POST"])
 def viewPost(postID):
-    if not sessionInfo['login']:
-        return redirect('/login')
-
+    sessionInfo['prevPage']= request.url_rule
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
@@ -153,10 +173,9 @@ def viewPost(postID):
     return render_template('viewPost.html', currentPage='viewPost', **sessionInfo, commentForm = commentForm, replyForm = replyForm, post = post, commentList = commentList)
 
 @app.route('/addPost', methods=["GET", "POST"])
+@login_required
 def addPost():
-    if not sessionInfo['login']:
-        return redirect('/login')
-
+    sessionInfo['prevPage']= request.url_rule
     sql = "SELECT TopicID, Content FROM topic ORDER BY Content"
     tupleCursor.execute(sql)
     listOfTopics = tupleCursor.fetchall()
@@ -176,9 +195,9 @@ def addPost():
     return render_template('addPost.html', currentPage='addPost', **sessionInfo, postForm=postForm)
 
 @app.route('/feedback', methods=["GET", "POST"])
+@login_required
 def feedback():
-    if not sessionInfo['login']:
-        return redirect('/login')
+    sessionInfo['prevPage']= request.url_rule
     feedbackForm = Forms.FeedbackForm(request.form)
 
     if request.method == 'POST' and feedbackForm.validate():
@@ -206,12 +225,24 @@ def login():
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser['UserID'])
             sessionInfo['username'] = findUser['Username']
+
+            sql = "SELECT * FROM admin WHERE UserID=%s"
+            val = (int(findUser['UserID']),)
+            dictCursor.execute(sql, val)
+            findAdmin = dictCursor.fetchone()
+
+            if findAdmin!=None:
+                sessionInfo['isAdmin'] = True
+            else:
+                sessionInfo['isAdmin'] = False
+
             flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home') # Change this later to redirect to profile page
 
     return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm)
 
 @app.route('/logout')
+@login_required
 def logout():
     sessionInfo['login'] = False
     sessionInfo['currentUser'] = 0
@@ -251,6 +282,7 @@ def signUp():
     return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm)
 
 @app.route('/profile', methods=["GET", "POST"])
+@login_required
 def profile():
     return render_template('profile.html', currentPage='myProfile', **sessionInfo)
 

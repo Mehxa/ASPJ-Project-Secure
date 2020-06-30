@@ -21,7 +21,7 @@
           <a href="/addPost" class="btn btn-danger w-100">Add Post</a>
         </div>
 
-        <div class="mt-3" id="trending-topics">
+        <div class="my-3" id="trending-topics">
           <p class="font-weight-bold my-3">
             Trending Topics
           </p>
@@ -64,7 +64,7 @@
       </form>
 
       {% for post in recentPosts %}
-        <div class="post-preview">
+        <div class="post-preview my-3">
           <a href="/viewPost/{{ post.PostID }}">
             <h1 class="post-title">
               {{ post.Title }}
@@ -73,21 +73,63 @@
               {{ post.Content }} <span style="color: #6a6a6a; font-size: 14px;">... See More</span>
             </h2>
           </a>
-          <span class="post-meta">Posted by <a href="#">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="#">{{ post.Topic }}</a></span>
+          <span class="post-meta">Posted by <a href="/profile/{{post.Username}}">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="/indivTopic/{{post.TopicID}}">{{ post.Topic }}</a></span>
 
-          <span class="post-votes ml-auto float-right">
-            <a href="#"><i class="fa fa-arrow-up"></i></a>
+          <span class="post-votes ml-auto float-right" id="post-votes-{{ post.PostID }}">
+            <a onclick="postVote(this);" data-vote="1" data-post="{{ post.PostID }}"><i class="fa fa-arrow-up {% if post.UserVote==1 %}active{% endif %}"></i></a>
             <span id="postTotalVotes">{{ post.TotalVotes }}</span>
-            <a href="#"><i class="fa fa-arrow-down"></i></a>
+            <a onclick="postVote(this);" data-vote="-1" data-post="{{ post.PostID }}"><i class="fa fa-arrow-down {% if post.UserVote==-1 %}active{% endif %}"></i></a>
           </span> <!--Votes-->
         </div> <!--Post-->
       {% endfor %}
 
-        <div>
-          <a href="/topics" class="btn btn-danger w-100">View more posts</a>
-        </div>
+      <div>
+        <a href="/topics" class="btn btn-danger w-100">View more posts</a>
+      </div>
     </div> <!--Column-->
 
   </div> <!--Row-->
 </div> <!--Container-->
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function postVote(button) {
+    var voteValue = button.getAttribute("data-vote");
+    var postID = button.getAttribute("data-post");
+
+    fetch('/postVote', {
+      headers: new Headers({
+        "content-type": "application/json"
+      }),
+      method: 'POST',
+      body: JSON.stringify({
+          "voteValue": voteValue,
+          "postID": postID
+      })
+    })
+
+    .then(function (response) { // At this point, Flask has printed our JSON
+      response.json().then(function(data) {
+        if (response.status === 401) {
+          location.reload();
+        }
+
+        else {
+          if (data['toggleUpvote']==true) {
+            document.querySelector('#post-votes-' + data['postID'] + ' [data-vote="1"] i.fa-arrow-up').classList.toggle('active');
+          }
+
+          if (data['toggleDownvote']) {
+            document.querySelector('#post-votes-' + data['postID'] + ' [data-vote="-1"] i.fa-arrow-down').classList.toggle('active');
+          }
+
+          document.querySelector('#post-votes-' + data['postID'] + ' #postTotalVotes').innerText = data['updatedVoteTotal'];
+        }
+      });
+    }).catch(function (error) {
+        console.log("Fetch error: " + error['message']);
+    });
+  }
+</script>
 {% endblock %}

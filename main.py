@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
 import mysql.connector, re
 import Forms
 from datetime import datetime
 from functools import wraps
+from DatabaseManager import *
 
 db = mysql.connector.connect(
     host="localhost",
@@ -60,6 +61,68 @@ def get_all_topics(option):
         listOfTopics.insert(0, (0, 'All Topics'))
     return listOfTopics
 
+@app.route('/postVote', methods=["GET", "POST"])
+def postVote():
+    if not sessionInfo['login']:
+        flash('You must be logged in to vote.', 'warning')
+        return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
+
+    data = request.get_json(force=True)
+    currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), data['postID'])
+
+    if currentVote==None:
+        if data['voteValue']=='1':
+            toggleUpvote = True
+            toggleDownvote = False
+            newVote = 1
+            upvoteChange = '+1'
+            downvoteChange = '0'
+        else:
+            toggleUpvote = False
+            toggleDownvote = True
+            newVote = -1
+            upvoteChange = '0'
+            downvoteChange = '+1'
+
+        DatabaseManager.insert_post_vote(str(sessionInfo['currentUserID']), data['postID'], data['voteValue'])
+
+    else: # If vote for post exists
+        if currentVote['Vote']==1:
+            upvoteChange = '-1'
+            if data['voteValue']=='1':
+                toggleUpvote = True
+                toggleDownvote = False
+                newVote = 0
+                downvoteChange = '0'
+            else:
+                toggleUpvote = True
+                toggleDownvote = True
+                newVote = -1
+                downvoteChange = '+1'
+
+        else: # currentVote['Vote']==-1
+            downvoteChange = '-1'
+            if data['voteValue']=='1':
+                toggleUpvote = True
+                toggleDownvote = True
+                newVote = 1
+                upvoteChange = '+1'
+            else:
+                toggleUpvote = False
+                toggleDownvote = True
+                newVote = 0
+                upvoteChange = '0'
+
+        if newVote==0:
+            DatabaseManager.delete_post_vote(str(sessionInfo['currentUserID']), data['postID'])
+        else:
+            DatabaseManager.update_post_vote(str(newVote), str(sessionInfo['currentUserID']), data['postID'])
+
+    DatabaseManager.update_overall_post_vote(upvoteChange, downvoteChange, data['postID'])
+    updatedVoteTotal = DatabaseManager.calculate_updated_post_votes(data['postID'])
+    return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
+    , 'newVote': newVote, 'updatedVoteTotal': updatedVoteTotal, 'postID': data['postID']}), 200)
+
 @app.route('/')
 def main():
     return redirect("/home")
@@ -80,6 +143,14 @@ def home():
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
+        if sessionInfo['login']:
+            currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+            if currentVote==None:
+                post['UserVote'] = 0
+            else:
+                post['UserVote'] = currentVote['Vote']
+        else:
+            post['UserVote'] = 0
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
 

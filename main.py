@@ -144,12 +144,12 @@ def postVote():
                 upvoteChange = '0'
 
         if newVote==0:
-            DatabaseManager.delete_post_vote(str(sessionInfo['currentUserID']), data['postID'])
+            delete_post_vote(str(sessionInfo['currentUserID']), data['postID'])
         else:
-            DatabaseManager.update_post_vote(str(newVote), str(sessionInfo['currentUserID']), data['postID'])
+            update_post_vote(str(newVote), str(sessionInfo['currentUserID']), data['postID'])
 
-    DatabaseManager.update_overall_post_vote(upvoteChange, downvoteChange, data['postID'])
-    updatedVoteTotal = DatabaseManager.calculate_updated_post_votes(data['postID'])
+    update_overall_post_vote(upvoteChange, downvoteChange, data['postID'])
+    updatedVoteTotal = calculate_updated_post_votes(data['postID'])
     return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
     , 'newVote': newVote, 'updatedVoteTotal': updatedVoteTotal, 'postID': data['postID']}), 200)
 
@@ -174,7 +174,7 @@ def home():
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
         if sessionInfo['login']:
-            currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+            currentVote = get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
             if currentVote==None:
                 post['UserVote'] = 0
             else:

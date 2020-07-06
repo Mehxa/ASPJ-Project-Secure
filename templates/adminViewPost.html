@@ -1,0 +1,93 @@
+{% extends "adminBase.html" %}
+{% block title %}View Post{% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="/static/styles/viewPost.css">
+<link rel="stylesheet" href="/static/styles/postMeta.css">
+{% endblock %}
+
+{% block content %}
+{% autoescape false %}
+
+
+      <div class="post-preview">
+        <h1 class="post-title">
+          {{ post.Title }}
+        </h1>
+
+        <p class="post-text">
+          {{ post.Content }}
+        </p>
+
+        <span class="post-meta">Posted by <a href="/adminProfile/{{post.Username}}">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="/adminIndivTopic/{{ post.TopicID }}">{{ post.Topic }}</a></span>
+
+        <span class="post-votes ml-auto float-right">
+          <a href="#" data-toggle="modal" data-target="#DeletePostModal"><i class="fa fa-trash" aria-hidden="true"></i></a>
+          <a class="cancel-form" data-toggle="collapse" href="#commentForm"><i class="fa fa-comment"></i> Comment</a>
+          <a href="#" class="ml-3"><i class="fa fa-arrow-up"></i></a>
+            <span>{{ post.TotalVotes }}</span>
+          <a href="#"><i class="fa fa-arrow-down"></i></a>
+        </span> <!--Votes-->
+        <div id="DeletePostModal" class="modal fade" role="dialog">
+          <div class="modal-dialog">
+
+            <!-- Modal content-->
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title">Delete post</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+              </div>
+              <div class="modal-body">
+                <p>Delete {{ post.Username }}'s post? </p>
+              </div>
+              <div class="modal-footer">
+                <form method = "POST" action="/adminDeletePost/{{post.PostID}}">
+                <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div> <!--Post-->
+
+      <span class="meta">Comments:</span>
+
+      {% for comment in commentList %}
+      <div class="comment">
+        <p class="comment-meta">
+          <a href="/adminProfile/{{comment.Username}}">{{ comment.Username }}</a> on {{ comment.DatetimePosted }}
+        </p>
+
+        <p>{{ comment.Content }}</p>
+
+        <div class="comment-functions text-right">
+          <a href="#" data-toggle="modal" data-target="#replyModal" data-id="{{ comment.CommentID }}"><i class="fa fa-reply"></i> Reply</a>
+          <a href="#" class="ml-3"><i class="fa fa-arrow-up"></i></a>
+          <span>{{ comment.TotalVotes }}</span>
+          <a href="#"><i class="fa fa-arrow-down"></i></a>
+        </div> <!--Votes-->
+
+        {% if comment.ReplyList!=None %}
+          {% for reply in comment.ReplyList %}
+            <div class="sub-comment">
+              <p class="comment-meta">
+                <a href="/adminProfile/{{reply.Username}}">{{ reply.Username }}</a> on {{ reply.DatetimePosted }}
+              </p>
+              <p>{{ reply.Content }}</p>
+            </div> <!--Sub Comment-->
+          {% endfor %}
+        {% endif %}
+
+      </div> <!--Comment-->
+      {% endfor %}
+
+    </div> <!--Column-->
+  </div> <!--Row-->
+</div> <!--Container-->
+
+
+{% endautoescape %}
+{% endblock %}

@@ -22,13 +22,13 @@
           {{ post.Content }}
         </p>
 
-        <span class="post-meta">Posted by <a href="#">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="/topic/{{ post.Topic }}">{{ post.Topic }}</a></span>
+        <span class="post-meta">Posted by <a href="/profile/{{post.Username}}/{{sessionID}}">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="/indivTopic/{{ post.Topic }}/{{sessionID}}">{{ post.Topic }}</a></span>
 
-        <span class="post-votes ml-auto float-right">
+        <span class="post-votes ml-auto float-right" id="post-votes-{{ post.PostID }}">
           <a class="cancel-form" data-toggle="collapse" href="#commentForm"><i class="fa fa-comment"></i> Comment</a>
-          <a href="#" class="ml-3"><i class="fa fa-arrow-up"></i></a>
-            <span>{{ post.TotalVotes }}</span>
-          <a href="#"><i class="fa fa-arrow-down"></i></a>
+          <a onclick="postVote(this);" data-vote="1" data-post="{{ post.PostID }}" class="ml-3"><i class="fa fa-arrow-up {% if post.UserVote==1 %}active{% endif %}"></i></a>
+          <span id="postTotalVotes">{{ post.TotalVotes }}</span>
+          <a onclick="postVote(this);" data-vote="-1" data-post="{{ post.PostID }}"><i class="fa fa-arrow-down {% if post.UserVote==-1 %}active{% endif %}"></i></a>
         </span> <!--Votes-->
 
         <form method="POST" class="mt-4 collapse" id="commentForm">
@@ -48,25 +48,27 @@
       {% for comment in commentList %}
       <div class="comment">
         <p class="comment-meta">
-          <a href="#">{{ comment.Username }}</a> on {{ comment.DatetimePosted }}
+          <a href="/profile/{{comment.Username}}/{{sessionID}}">{{ comment.Username }}</a> on {{ comment.DatetimePosted }}
         </p>
 
         <p>{{ comment.Content }}</p>
 
-        <div class="comment-functions text-right">
+        <div class="comment-functions text-right" id="comment-votes-{{ comment.CommentID }}">
           <a href="#" data-toggle="modal" data-target="#replyModal" data-id="{{ comment.CommentID }}"><i class="fa fa-reply"></i> Reply</a>
-          <a href="#" class="ml-3"><i class="fa fa-arrow-up"></i></a>
-          <span>{{ comment.TotalVotes }}</span>
-          <a href="#"><i class="fa fa-arrow-down"></i></a>
+          <a onclick="commentVote(this);" data-vote="1" data-comment="{{ comment.CommentID }}" class="ml-3"><i class="fa fa-arrow-up {% if comment.UserVote==1 %}active{% endif %}"></i></a>
+          <span id="commentTotalVotes">{{ comment.TotalVotes }}</span>
+          <a onclick="commentVote(this);" data-vote="-1" data-comment="{{ comment.CommentID }}"><i class="fa fa-arrow-down {% if comment.UserVote==-1 %}active{% endif %}"></i></a>
         </div> <!--Votes-->
 
         {% if comment.ReplyList!=None %}
           {% for reply in comment.ReplyList %}
             <div class="sub-comment">
               <p class="comment-meta">
-                <a href="#">{{ reply.Username }}</a> on {{ reply.DatetimePosted }}
+                <a href="/profile/{{reply.Username}}/{{sessionID}}">{{ reply.Username }}</a> on {{ reply.DatetimePosted }}
               </p>
+              {% autoescape false %}
               <p>{{ reply.Content }}</p>
+              {% endautoescape %}
             </div> <!--Sub Comment-->
           {% endfor %}
         {% endif %}
@@ -104,7 +106,46 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/scripts/post-votes.js"></script>
 <script>
+function commentVote(button) {
+  var voteValue = button.getAttribute("data-vote");
+  var commentID = button.getAttribute("data-comment");
+
+  fetch('/commentVote', {
+    headers: new Headers({
+      "content-type": "application/json"
+    }),
+    method: 'POST',
+    body: JSON.stringify({
+        "voteValue": voteValue,
+        "commentID": commentID
+    })
+  })
+
+  .then(function (response) { // At this point, Flask has printed our JSON
+    response.json().then(function(data) {
+      if (response.status === 401) {
+        location.reload();
+      }
+
+      else {
+        if (data['toggleUpvote']==true) {
+          document.querySelector('#comment-votes-' + data['commentID'] + ' [data-vote="1"] i.fa-arrow-up').classList.toggle('active');
+        }
+
+        if (data['toggleDownvote']) {
+          document.querySelector('#comment-votes-' + data['commentID'] + ' [data-vote="-1"] i.fa-arrow-down').classList.toggle('active');
+        }
+
+        document.querySelector('#comment-votes-' + data['commentID'] + ' #commentTotalVotes').innerText = data['updatedCommentTotal'];
+      }
+    });
+  }).catch(function (error) {
+      console.log("Fetch error: " + error['message']);
+  });
+}
+
 $('#replyModal').on('show.bs.modal', function (event) {
   var button = $(event.relatedTarget)
   var commentID = button.data('id')

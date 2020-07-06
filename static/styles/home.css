@@ -15,6 +15,10 @@ hr {
   padding-left: 15px;
 }
 
+.form-control:focus {
+  box-shadow: none;
+}
+
 .topic {
   padding: 5px 10px;
 }
@@ -26,7 +30,6 @@ p.topic span {
 
 .post-preview {
   background-color: #fff;
-  margin: 15px 0px;
   padding: 10px 25px;
   width: 100%;
 }

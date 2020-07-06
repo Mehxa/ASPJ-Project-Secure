@@ -4,6 +4,12 @@ import Forms
 from datetime import datetime
 from functools import wraps
 from DatabaseManager import *
+# Flask mail
+import os
+from flask_mail import Mail, Message
+import sys
+import asyncio
+from threading import Thread
 
 db = mysql.connector.connect(
     host="localhost",
@@ -18,20 +24,40 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+app.config.update(
+    MAIL_SERVER= 'smtp.office365.com',
+    MAIL_PORT= 587,
+    MAIL_USE_TLS= True,
+    MAIL_USE_SSL= False,
+	MAIL_USERNAME = 'deloremipsumonlinestore@outlook.com',
+	# MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
+	MAIL_DEBUG = True,
+	MAIL_SUPPRESS_SEND = False,
+    MAIL_ASCII_ATTACHMENTS = True,
+    # Directory for admins to refer files (Files)
+    UPLOAD_FOLDER = "templates\Files"
+	)
 
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+mail = Mail(app)
 """ For testing purposes only. To make it convenient cause I can't remember all the account names.
 Uncomment the account that you would like to use. To run the program as not logged in, run the first one."""
-# sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': False}
-# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': True}
-# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': True}
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mexha', 'isAdmin': True}
-# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': True}
-# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': False}
-sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': False}
-# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': False}
-# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': False}
-# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': False}
+global sessionID
+sessionID = 0
+sessions={}
+sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
+# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
+# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
+# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
+# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
+# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
+# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
+# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
+# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
+sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
+sessionID += 1
+sessionInfo['sessionID'] = sessionID
+sessions[sessionID] = sessionInfo
 
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)
@@ -55,11 +81,15 @@ def admin_required(function_to_wrap):
 
 def get_all_topics(option):
     sql = "SELECT TopicID, Content FROM topic ORDER BY Content"
-    tupleCursor.execute(sql)
-    listOfTopics = tupleCursor.fetchall()
+    dictCursor.execute(sql)
+    listOfTopics = dictCursor.fetchall()
+    topicTuples = []
+    for topic in listOfTopics:
+        topicTuples.append((str(topic['TopicID']), topic['Content']))
+
     if option=='all':
-        listOfTopics.insert(0, (0, 'All Topics'))
-    return listOfTopics
+        topicTuples.insert(0, ('0', 'All Topics'))
+    return topicTuples
 
 @app.route('/postVote', methods=["GET", "POST"])
 def postVote():
@@ -191,8 +221,8 @@ def searchPosts():
 
     return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
 
-@app.route('/viewPost/<int:postID>', methods=["GET", "POST"])
-def viewPost(postID):
+@app.route('/viewPost/<int:postID>/<sessionId>', methods=["GET", "POST"])
+def viewPost(postID, sessionId):
     sessionInfo['prevPage']= request.url_rule
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
@@ -230,7 +260,7 @@ def viewPost(postID):
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Comment posted!', 'success')
-        return redirect('/viewPost/%d' %postID)
+        return redirect('/viewPost/%d/%d' %(postID,sessionInfo['sessionID']))
 
     if request.method == 'POST' and replyForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
@@ -239,20 +269,20 @@ def viewPost(postID):
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Comment posted!', 'success')
-        return redirect('/viewPost/%d' %postID)
+        return redirect('/viewPost/%d/%d' %(postID, sessionInfo['sessionID']))
 
     return render_template('viewPost.html', currentPage='viewPost', **sessionInfo, commentForm = commentForm, replyForm = replyForm, post = post, commentList = commentList)
 
-@app.route('/addPost', methods=["GET", "POST"])
+@app.route('/addPost/<sessionId>', methods=["GET", "POST"])
 @login_required
-def addPost():
+def addPost(sessionId):
     sessionInfo['prevPage']= request.url_rule
     sql = "SELECT TopicID, Content FROM topic ORDER BY Content"
     tupleCursor.execute(sql)
     listOfTopics = tupleCursor.fetchall()
 
     postForm = Forms.PostForm(request.form)
-    postForm.topic.choices = listOfTopics
+    postForm.topic.choices = get_all_topics('default')
 
     if request.method == 'POST' and postForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
@@ -265,9 +295,9 @@ def addPost():
 
     return render_template('addPost.html', currentPage='addPost', **sessionInfo, postForm=postForm)
 
-@app.route('/feedback', methods=["GET", "POST"])
+@app.route('/feedback/<sessionId>', methods=["GET", "POST"])
 @login_required
-def feedback():
+def feedback(sessionId):
     sessionInfo['prevPage']= request.url_rule
     feedbackForm = Forms.FeedbackForm(request.form)
 
@@ -278,12 +308,13 @@ def feedback():
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Feedback sent!', 'success')
-        return redirect('/feedback')
+        return redirect('/feedback/%d' %sessionInfo['sessionID'])
 
     return render_template('feedback.html', currentPage='feedback', **sessionInfo, feedbackForm = feedbackForm)
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    global sessionID
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
         sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
@@ -296,18 +327,25 @@ def login():
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser['UserID'])
             sessionInfo['username'] = findUser['Username']
-
+            sessionInfo['isAdmin'] = findUser['isAdmin']
+            sessionID += 1
+            sessionInfo['sessionID'] = sessionID
+            sessions[sessionID] = sessionInfo
+            sessionRecord = open("templates\Files\sessionRecord.txt","a")
+            record = "%s signed in at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
+            sessionRecord.write(record)
+            sessionRecord.close()
             sql = "SELECT * FROM admin WHERE UserID=%s"
             val = (int(findUser['UserID']),)
             dictCursor.execute(sql, val)
             findAdmin = dictCursor.fetchone()
-
+            flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             if findAdmin!=None:
                 sessionInfo['isAdmin'] = True
+                return redirect('/adminHome')
             else:
                 sessionInfo['isAdmin'] = False
 
-            flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home') # Change this later to redirect to profile page
 
     return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm)
@@ -315,20 +353,32 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
+    global sessionID
+    sessionInfo = sessions[sessionID]
     sessionInfo['login'] = False
     sessionInfo['currentUser'] = 0
     sessionInfo['username'] = ''
+    sessions.pop(sessionID)
+    sessionRecord = open("templates\Files\sessionRecord.txt", "a")
+    record = "%s signed out at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
+    sessionRecord.close()
     return redirect('/home')
 
 @app.route('/signup', methods=["GET", "POST"])
 def signUp():
+    global sessionID
     signUpForm = Forms.SignUpForm(request.form)
 
     if request.method == 'POST' and signUpForm.validate():
-        sql = 'INSERT INTO user (Email, Username, Password, Birthday) VALUES (%s, %s, %s, %s)'
-        val = (signUpForm.email.data, signUpForm.username.data, signUpForm.password.data, signUpForm.dob.data)
+        sql = "INSERT INTO user (Email, Username, Name, Birthday, Password, isAdmin) VALUES"
+        sql += " ('" + signUpForm.email.data + "'"
+        sql += " , '" + signUpForm.username.data + "'"
+        sql += " , '" + signUpForm.name.data + "'"
+        sql += " , '" + str(signUpForm.dob.data) + "'"
+        sql += " , '" + signUpForm.password.data + "'"
+        sql += " , '0')"
         try:
-            tupleCursor.execute(sql, val)
+            tupleCursor.execute(sql)
             db.commit()
 
         except mysql.connector.errors.IntegrityError as errorMsg:
@@ -339,23 +389,373 @@ def signUp():
                 signUpForm.username.errors.append('This username is already taken.')
 
         else:
-            sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
-            val = (signUpForm.username.data, signUpForm.password.data)
-            tupleCursor.execute(sql, val)
+            sql = "SELECT UserID, Username FROM user WHERE"
+            sql += " Username='" + signUpForm.username.data + "'"
+            sql += " AND Password='" + signUpForm.password.data + "'"
+            tupleCursor.execute(sql)
             findUser = tupleCursor.fetchone()
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser[0])
             sessionInfo['username'] = findUser[1]
-
+            sessionID += 1
+            sessionInfo['sessionID'] = sessionID
+            sessions[sessionID] = sessionInfo
+            sessionRecord = open("templates\Files\sessionRecord.txt", "a")
+            record = "New account %s created at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
+            sessionRecord.close()
             flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home')
 
     return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm)
 
-@app.route('/profile', methods=["GET", "POST"])
-@login_required
-def profile():
-    return render_template('profile.html', currentPage='myProfile', **sessionInfo)
+@app.route('/profile/<username>/<sessionId>', methods=["GET", "POST"])
+def profile(username, sessionId):
+    # global sessionID
+    sessionInfo = sessions[sessionID]
+    updateProfileForm = Forms.SignUpForm(request.form)
+    sql = "SELECT * FROM user WHERE user.Username='" + str(username) + "'"
+    dictCursor.execute(sql)
+    userData = dictCursor.fetchone()
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " WHERE user.Username='" + str(username) + "'"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    dictCursor.execute(sql)
+    recentPosts = dictCursor.fetchall()
+    userData['Credibility'] = 0
+    if userData['Status'] == None:
+        userData['Status'] = userData['Username'] + " is too lazy to add a status"
+    for post in recentPosts:
+        post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+        userData['Credibility'] += post['TotalVotes']
+        post['Content'] = post['Content'][:200]
+
+    if request.method == "POST" and updateProfileForm.validate():
+        oldUsername = username
+        oldUserID = sessionInfo['currentUserID']
+        sql = "UPDATE user "
+        sql += "SET Username='" + updateProfileForm.username.data + "',"
+        sql += "Password='" + updateProfileForm.password.data + "',"
+        sql += "Name='" + updateProfileForm.name.data + "',"
+        sql += "Email='" + updateProfileForm.email.data + "',"
+        sql += "Status='" + updateProfileForm.status.data + "',"
+        sql += "Birthday='" + str(updateProfileForm.dob.data) + "'"
+        sql += "WHERE UserID='" + str(sessionInfo['currentUserID']) + "'"
+        try:
+            tupleCursor.execute(sql)
+            db.commit()
+
+        except mysql.connector.errors.IntegrityError as errorMsg:
+            errorMsg = str(errorMsg)
+            if 'email' in errorMsg.lower():
+                updateProfileForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
+                flash("This email has already been linked to another account. Please use a different email.", "success")
+            elif 'username' in errorMsg.lower():
+                flash("This username is already taken!", "success")
+                updateProfileForm.username.errors.append('This username is already taken.')
+        else:
+            sql = "SELECT UserID, Username FROM user WHERE"
+            sql += " Username='" + updateProfileForm.username.data + "'"
+            sql += " AND Password='" + updateProfileForm.password.data + "'"
+            tupleCursor.execute(sql)
+            findUser = tupleCursor.fetchone()
+            sessionInfo['login'] = True
+            sessionInfo['currentUserID'] = int(findUser[0])
+            sessionInfo['username'] = findUser[1]
+            sessions[sessionID] = sessionInfo
+            sessionRecord = open("templates\Files\sessionRecord.txt", "a")
+            if oldUsername == sessionInfo['username']:
+                record = "Account %s updated at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
+            else:
+                record = "Account %s updated at %s, account's username is now %s sessionID: %d \n" % (oldUsername,  datetime.now(), sessionInfo['username'], sessionInfo['sessionID'])
+            sessionRecord.close()
+
+            if sessionInfo['currentUserID'] != oldUserID:
+                flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
+            else:
+                flash('Account successfully updated!', 'success')
+
+            return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
+
+
+
+    return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts, updateProfileForm=updateProfileForm)
+
+@app.route('/topics')
+def topics():
+    # uncomment from here
+    # sessionInfo = sessions[sessionID]
+    sql = "SELECT Content,TopicID FROM topic ORDER BY Content "
+    tupleCursor.execute(sql)
+    listOfTopics = tupleCursor.fetchall()
+    return render_template('topics.html', currentPage='topics', **sessionInfo, listOfTopics=listOfTopics)
+
+@app.route('/indivTopic/<topicID>/<sessionId>', methods=["GET", "POST"])
+def indivTopic(topicID, sessionId):
+    sessionInfo = sessions[sessionID]
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " WHERE topic.TopicID = " + str(topicID)
+
+    dictCursor.execute(sql)
+    recentPosts = dictCursor.fetchall()
+    for post in recentPosts:
+        post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+        post['Content'] = post['Content'][:200]
+    topic = "SELECT Content FROM topic WHERE topic.TopicID=" + str(topicID)
+    tupleCursor.execute(topic)
+    topic=tupleCursor.fetchone()
+    return render_template('indivTopic.html', currentPage='indivTopic', **sessionInfo, recentPosts=recentPosts, topic = topic[0])
+
+@app.route('/adminProfile/<username>', methods=["GET", "POST"])
+def adminUserProfile(username):
+    sessionInfo = sessions[sessionID]
+    sql = "SELECT * FROM user WHERE user.Username='" + str(username) + "'"
+    dictCursor.execute(sql)
+    userData = dictCursor.fetchone()
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.TopicID, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " WHERE user.Username='" + str(username) + "'"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    dictCursor.execute(sql)
+    recentPosts = dictCursor.fetchall()
+    userData['Credibility'] = 0
+    if userData['Status'] == None:
+        userData['Status'] = userData['Username'] + " is too lazy to add a status"
+    for post in recentPosts:
+        post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+        userData['Credibility'] += post['TotalVotes']
+        post['Content'] = post['Content'][:200]
+    sql = "SELECT UserID, Username, isAdmin FROM user WHERE"
+    sql += " Username='" + str(username) + "'"
+    dictCursor.execute(sql)
+    user = dictCursor.fetchone()
+    admin = user['isAdmin']
+
+    return render_template("adminProfile.html", currentPage = "myProfile", **sessionInfo, userData = userData, recentPosts = recentPosts, admin=admin)
+
+
+
+@app.route('/adminHome', methods=["GET", "POST"])
+def adminHome():
+    sessionInfo = sessions[sessionID]
+    searchBarForm = Forms.SearchBarForm(request.form)
+    searchBarForm.topic.choices = get_all_topics('all')
+    if request.method == 'POST' and searchBarForm.validate():
+        return redirect(url_for('searchPosts', searchQuery = searchBarForm.searchQuery.data, topic = searchBarForm.topic.data))
+
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username,topic.TopicID, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
+
+    dictCursor.execute(sql)
+    recentPosts = dictCursor.fetchall()
+    for post in recentPosts:
+        post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+        post['Content'] = post['Content'][:200]
+
+    return render_template('adminHome.html', currentPage='adminHome', **sessionInfo, searchBarForm = searchBarForm,recentPosts = recentPosts)
+
+@app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
+def adminViewPost(postID):
+    sessionInfo = sessions[sessionID]
+
+    sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted,post.TopicID,post.PostID, user.Username, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " WHERE PostID=" + str(postID)
+    dictCursor.execute(sql)
+    post = dictCursor.fetchone()
+    post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+
+    sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
+    sql += " INNER JOIN user ON comment.UserID=user.UserID"
+    sql += " WHERE comment.PostID=" + str(postID)
+    dictCursor.execute(sql)
+    commentList = dictCursor.fetchall()
+    for comment in commentList:
+        comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
+
+        sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
+        sql += " INNER JOIN user ON reply.UserID=user.UserID"
+        sql += " WHERE reply.CommentID=" + str(comment['CommentID'])
+        dictCursor.execute(sql)
+        replyList = dictCursor.fetchall()
+        comment['ReplyList'] = replyList
+
+    return render_template('adminViewPost.html', currentPage='adminViewPost', **sessionInfo, post = post, commentList = commentList)
+
+@app.route('/adminTopics')
+def adminTopics():
+    # uncomment from here
+    sessionInfo  = sessions[sessionID]
+    sql = "SELECT Content,TopicID FROM topic ORDER BY Content "
+    tupleCursor.execute(sql)
+    listOfTopics = tupleCursor.fetchall()
+    return render_template('adminTopics.html', currentPage='adminTopics', **sessionInfo, listOfTopics=listOfTopics)
+
+@app.route('/adminIndivTopic/<topicID>', methods=["GET", "POST"])
+def adminIndivTopic(topicID):
+    sessionInfo = sessions[sessionID]
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql += " INNER JOIN user ON post.UserID=user.UserID"
+    sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
+    sql += " WHERE topic.TopicID = " + str(topicID)
+
+    dictCursor.execute(sql)
+    recentPosts = dictCursor.fetchall()
+    for post in recentPosts:
+        post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+        post['Content'] = post['Content'][:200]
+    topic = "SELECT Content FROM topic WHERE topic.TopicID=" + str(topicID)
+    tupleCursor.execute(topic)
+    topic=tupleCursor.fetchone()
+    return render_template('adminIndivTopic.html', currentPage='adminIndivTopic', **sessionInfo, recentPosts=recentPosts, topic=topic[0])
+
+@app.route('/addTopic', methods=["GET", "POST"])
+def addTopic():
+    sessionInfo = sessions[sessionID]
+    # uncomment here
+    if not sessionInfo['login']:
+        return redirect('/login')
+    # til here
+    sql = "SELECT Content FROM topic ORDER BY Content"
+
+    tupleCursor.execute(sql)
+    listOfTopics = tupleCursor.fetchall()
+
+    topicForm = Forms.TopicForm(request.form)
+    topicForm.topic.choices = listOfTopics
+    # uncomment here
+    if request.method == 'POST' and topicForm.validate():
+        dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+        sql = 'INSERT INTO topic ( UserID, Content, DateTimePosted) VALUES ( %s,%s, %s)'
+        val = (sessionInfo["currentUserID"],topicForm.topic.data, dateTime)
+        tupleCursor.execute(sql, val)
+        db.commit()
+        flash('Topic successfully created!', 'success')
+        return redirect('/adminHome')
+        # till here
+
+
+    return render_template('addTopic.html', currentPage='addTopic', **sessionInfo, topicForm=topicForm)
+
+@app.route('/adminUsers')
+def adminUsers():
+    sessionInfo = sessions[sessionID]
+    sql = "SELECT Username From user"
+    tupleCursor.execute(sql)
+    listOfUsernames = tupleCursor.fetchall()
+    print(listOfUsernames)
+    return render_template('adminUsers.html', currentPage='adminUsers', **sessionInfo, listOfUsernames = listOfUsernames)
+
+@app.route('/adminDeleteUser/<username>', methods=['POST'])
+def deleteUser(username):
+    user_email = "SELECT Email FROM user WHERE user.username='"+username+"'"
+    tupleCursor.execute(user_email)
+    sql = "DELETE FROM user WHERE user.username= '"+username+"'"
+    tupleCursor.execute(sql)
+    try:
+        msg = Message("Lorem Ipsum",
+            sender="deloremipsumonlinestore@outlook.com",
+            recipients=[user_email[0]])
+        msg.body = "Your account has been terminated"
+        msg.html = render_template('email.html', postID="delete user", username=username, content=0, posted=0)
+        mail.send(msg)
+        print("\n\n\nMAIL SENT\n\n\n")
+    except Exception as e:
+        print(e)
+        print("Error:", sys.exc_info()[0])
+        print("goes into except")
+
+    return redirect('/adminUsers')
+
+@app.route('/adminDeletePost/<postID>', methods=['POST'])
+def deletePost(postID):
+    sql = "SELECT post.Content, post.DatetimePosted, post.postID, user.Username, user.email "
+    sql += "FROM post"
+    sql+= " INNER JOIN user ON post.UserID = user.UserID"
+    sql += " WHERE post.PostID = " + str(postID)
+    dictCursor.execute(sql)
+    email_info = dictCursor.fetchall()
+    print(email_info)
+    sql = "DELETE FROM post WHERE post.PostID= '"+postID+"'"
+    tupleCursor.execute(sql)
+    try:
+        msg = Message("Lorem Ipsum",
+            sender="deloremipsumonlinestore@outlook.com",
+            recipients=[email_info[0]['email']])
+        msg.body = "Your post has been deleted"
+        for info in email_info:
+            msg.html = render_template('email.html', postID=postID, username=info['Username'], content=info['Content'], posted=info['DatetimePosted'])
+            mail.send(msg)
+        print("\n\n\nMAIL SENT\n\n\n")
+    except Exception as e:
+        print(e)
+        print("Error:", sys.exc_info()[0])
+        print("goes into except")
+
+    return redirect('/adminHome')
+@app.route('/adminFeedback')
+def adminFeedback():
+    sessionInfo = sessions[sessionID]
+    sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
+    sql += "FROM feedback"
+    sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
+    dictCursor.execute(sql)
+    feedbackList = dictCursor.fetchall()
+    print(feedbackList)
+    return render_template('adminFeedback.html', currentPage='adminFeedback', **sessionInfo, feedbackList=feedbackList)
+
+@app.route('/replyFeedback/<feedbackID>',methods=["GET","POST"])
+def replyFeedback(feedbackID):
+    sessionInfo = sessions[sessionID]
+    sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
+    sql += "FROM feedback"
+    sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
+    sql += " WHERE feedback.FeedbackID = " + str(feedbackID)
+    dictCursor.execute(sql)
+    feedbackList = dictCursor.fetchall()
+    print(feedbackList)
+    replyForm = Forms.ReplyFeedbackForm(request.form)
+    # uncomment here
+    if request.method == 'POST' and replyForm.validate():
+        reply=replyForm.reply.data
+        email=feedbackList[0]['Email']
+        print(email)
+        try:
+            msg = Message("Lorem Ipsum",
+                sender="deloremipsumonlinestore@outlook.com",
+                recipients=[email])
+            msg.body = "We love your feedback!"
+            msg.html = render_template('email.html', postID="feedback reply", username=feedbackList[0]['Username'], content=feedbackList[0]['Content'], posted=feedbackList[0]['DatetimePosted'], reply=reply)
+            mail.send(msg)
+            print("\n\n\nMAIL SENT\n\n\n")
+        except Exception as e:
+            print(e)
+            print("Error:", sys.exc_info()[0])
+            print("goes into except")
+        return redirect('/adminFeedback')
+    return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
+
+
+@app.route('/adminFiles')
+def list_files():
+    files = []
+    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+        path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.isfile(path):
+            files.append(filename)
+    print(files)
+    return render_template('adminFiles.html', files=files, **sessionInfo)
+
+@app.route('/adminFiles/<path:path>')
+def download(path):
+    return send_from_directory(directory=app.config['UPLOAD_FOLDER'], filename=path, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -41,3 +41,10 @@ class CommentForm(Form):
 class ReplyForm(Form):
     repliedID = HiddenField()
     reply = TextAreaField('Comment', [validators.DataRequired()], render_kw={"rows": 3, "placeholder": "Enter comment here..."})
+
+class ReplyFeedbackForm(Form):
+    # repliedID = HiddenField()
+    reply = TextAreaField('Reply', [validators.DataRequired()], render_kw={"rows": 3, "placeholder": "Enter reply here..."})
+
+class TopicForm(Form):
+    topic = StringField('Topic', [validators.DataRequired()])

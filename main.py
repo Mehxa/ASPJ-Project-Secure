@@ -3,7 +3,7 @@ import mysql.connector, re
 import Forms
 from datetime import datetime
 from functools import wraps
-from DatabaseManager import *
+import DatabaseManager
 # Flask mail
 import os
 from flask_mail import Mail, Message
@@ -144,12 +144,12 @@ def postVote():
                 upvoteChange = '0'
 
         if newVote==0:
-            delete_post_vote(str(sessionInfo['currentUserID']), data['postID'])
+            DatabaseManager.delete_post_vote(str(sessionInfo['currentUserID']), data['postID'])
         else:
-            update_post_vote(str(newVote), str(sessionInfo['currentUserID']), data['postID'])
+            DatabaseManager.update_post_vote(str(newVote), str(sessionInfo['currentUserID']), data['postID'])
 
-    update_overall_post_vote(upvoteChange, downvoteChange, data['postID'])
-    updatedVoteTotal = calculate_updated_post_votes(data['postID'])
+    DatabaseManager.update_overall_post_vote(upvoteChange, downvoteChange, data['postID'])
+    updatedVoteTotal = DatabaseManager.calculate_updated_post_votes(data['postID'])
     return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
     , 'newVote': newVote, 'updatedVoteTotal': updatedVoteTotal, 'postID': data['postID']}), 200)
 
@@ -174,7 +174,7 @@ def home():
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
         if sessionInfo['login']:
-            currentVote = get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+            currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
             if currentVote==None:
                 post['UserVote'] = 0
             else:
@@ -190,7 +190,7 @@ def home():
 def searchPosts():
     sessionInfo['prevPage']= request.url_rule
     searchBarForm = Forms.SearchBarForm(request.form)
-    searchBarForm.topic.choices = get_all_topics('all')
+    searchBarForm.topic.choices = DatabaseManager.get_all_topics('all')
     if request.method == 'POST' and searchBarForm.validate():
         return redirect(url_for('searchPosts', searchQuery = searchBarForm.searchQuery.data, topic = searchBarForm.topic.data))
 

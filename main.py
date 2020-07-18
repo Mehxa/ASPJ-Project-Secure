@@ -413,8 +413,9 @@ def profile(username, sessionId):
     # global sessionID
     sessionInfo = sessions[sessionID]
     updateProfileForm = Forms.SignUpForm(request.form)
-    sql = "SELECT * FROM user WHERE user.Username='" + str(username) + "'"
-    dictCursor.execute(sql)
+    sql = "SELECT * FROM user WHERE user.Username=%s"
+    val = (username,)
+    dictCursor.execute(sql, val)
     userData = dictCursor.fetchone()
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
@@ -504,16 +505,18 @@ def indivTopic(topicID, sessionId):
     for post in recentPosts:
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
-    topic = "SELECT Content FROM topic WHERE topic.TopicID=" + str(topicID)
-    tupleCursor.execute(topic)
+    topic = "SELECT Content FROM topic WHERE topic.TopicID=%s"
+    val = (topicID,)
+    tupleCursor.execute(topic, val)
     topic=tupleCursor.fetchone()
     return render_template('indivTopic.html', currentPage='indivTopic', **sessionInfo, recentPosts=recentPosts, topic = topic[0])
 
 @app.route('/adminProfile/<username>', methods=["GET", "POST"])
 def adminUserProfile(username):
     sessionInfo = sessions[sessionID]
-    sql = "SELECT * FROM user WHERE user.Username='" + str(username) + "'"
-    dictCursor.execute(sql)
+    sql = "SELECT * FROM user WHERE user.Username=%s"
+    val = (username,)
+    dictCursor.execute(sql, val)
     userData = dictCursor.fetchone()
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.TopicID, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
@@ -611,8 +614,9 @@ def adminIndivTopic(topicID):
     for post in recentPosts:
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
-    topic = "SELECT Content FROM topic WHERE topic.TopicID=" + str(topicID)
-    tupleCursor.execute(topic)
+    topic = "SELECT Content FROM topic WHERE topic.TopicID=%s"
+    val = (topicID,)
+    tupleCursor.execute(topic, val)
     topic=tupleCursor.fetchone()
     return render_template('adminIndivTopic.html', currentPage='adminIndivTopic', **sessionInfo, recentPosts=recentPosts, topic=topic[0])
 
@@ -655,10 +659,12 @@ def adminUsers():
 
 @app.route('/adminDeleteUser/<username>', methods=['POST'])
 def deleteUser(username):
-    user_email = "SELECT Email FROM user WHERE user.username='"+username+"'"
-    tupleCursor.execute(user_email)
-    sql = "DELETE FROM user WHERE user.username= '"+username+"'"
-    tupleCursor.execute(sql)
+    user_email = "SELECT Email FROM user WHERE user.username=%s"
+    val = (username,)
+    tupleCursor.execute(user_email, val)
+    sql = "DELETE FROM user WHERE user.username=%s"
+    val = (username,)
+    tupleCursor.execute(sql, val)
     try:
         msg = Message("Lorem Ipsum",
             sender="deloremipsumonlinestore@outlook.com",
@@ -679,12 +685,14 @@ def deletePost(postID):
     sql = "SELECT post.Content, post.DatetimePosted, post.postID, user.Username, user.email "
     sql += "FROM post"
     sql+= " INNER JOIN user ON post.UserID = user.UserID"
-    sql += " WHERE post.PostID = " + str(postID)
-    dictCursor.execute(sql)
+    sql += " WHERE post.PostID = %s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     email_info = dictCursor.fetchall()
     print(email_info)
-    sql = "DELETE FROM post WHERE post.PostID= '"+postID+"'"
-    tupleCursor.execute(sql)
+    sql = "DELETE FROM post WHERE post.PostID=%s"
+    val = (postID,)
+    tupleCursor.execute(sql, val)
     try:
         msg = Message("Lorem Ipsum",
             sender="deloremipsumonlinestore@outlook.com",

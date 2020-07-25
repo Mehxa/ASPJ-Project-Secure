@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask_bcrypt import *
 import mysql.connector, re
 import Forms
 from datetime import datetime
@@ -10,6 +11,7 @@ from flask_mail import Mail, Message
 import sys
 import asyncio
 from threading import Thread
+
 
 db = mysql.connector.connect(
     host="localhost",
@@ -40,6 +42,7 @@ app.config.update(
 
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 mail = Mail(app)
+bcrypt = Bcrypt(app)
 """ For testing purposes only. To make it convenient cause I can't remember all the account names.
 Uncomment the account that you would like to use. To run the program as not logged in, run the first one."""
 global sessionID
@@ -58,6 +61,8 @@ sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAd
 sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
+test = bcrypt.generate_password_hash("Test")
+
 
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)
@@ -317,17 +322,20 @@ def login():
     global sessionID
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
-        sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
-        val = (loginForm.username.data, loginForm.password.data)
+        sql = "SELECT UserID, Username, Password FROM user WHERE Username=%s"
+        val = (loginForm.username.data,)
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
+        password = findUser["Password"]
+        password = password.encode("utf8")
+        valid = bcrypt.check_password_hash(password, loginForm.password.data)
+        print(valid)
         if findUser==None:
             loginForm.password.errors.append('Wrong email or password.')
         else:
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser['UserID'])
             sessionInfo['username'] = findUser['Username']
-            sessionInfo['isAdmin'] = findUser['isAdmin']
             sessionID += 1
             sessionInfo['sessionID'] = sessionID
             sessions[sessionID] = sessionInfo
@@ -370,13 +378,13 @@ def signUp():
     signUpForm = Forms.SignUpForm(request.form)
 
     if request.method == 'POST' and signUpForm.validate():
-        sql = "INSERT INTO user (Email, Username, Name, Birthday, Password, isAdmin) VALUES"
+        password_hash = bcrypt.generate_password_hash(signUpForm.password.data).decode("utf8")
+        print(password_hash)
+        sql = "INSERT INTO user (Email, Username, Birthday, Password) VALUES"
         sql += " ('" + signUpForm.email.data + "'"
         sql += " , '" + signUpForm.username.data + "'"
-        sql += " , '" + signUpForm.name.data + "'"
         sql += " , '" + str(signUpForm.dob.data) + "'"
-        sql += " , '" + signUpForm.password.data + "'"
-        sql += " , '0')"
+        sql += " , '" + password_hash + "')"
         try:
             tupleCursor.execute(sql)
             db.commit()
@@ -391,7 +399,7 @@ def signUp():
         else:
             sql = "SELECT UserID, Username FROM user WHERE"
             sql += " Username='" + signUpForm.username.data + "'"
-            sql += " AND Password='" + signUpForm.password.data + "'"
+            sql += " AND Password='" + password_hash + "'"
             tupleCursor.execute(sql)
             findUser = tupleCursor.fetchone()
             sessionInfo['login'] = True

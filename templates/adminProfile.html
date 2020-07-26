@@ -13,24 +13,6 @@
     <hr class="mx-auto mb-3">
     <div class="profile-field">
       <div class="col-md-6">
-        <i class="fa fa-id-card-o mr-3" aria-hidden="true" style="font-size:24px"></i>
-        <span class="field-title">Name:</span>
-      </div>
-      <div class="col-md-6">
-        <p class="value">{{userData['Name']}}</p>
-      </div>
-    </div>
-    <div class="profile-field">
-      <div class="col-md-6">
-        <i class="fa fa-gift mr-3" aria-hidden="true" style="font-size:24px"></i>
-      <span class="field-title">Birthday:</span>
-      </div>
-      <div class="col-md-6">
-        <p class="value">{{userData['Birthday']}}</p>
-      </div>
-    </div>
-    <div class="profile-field">
-      <div class="col-md-6">
         <i class="fa fa-child mr-3" aria-hidden="true" style="font-size:24px"></i>
       <span class="field-title">Status:</span>
       </div>
@@ -57,11 +39,47 @@
       {%endif%}
     </div>
   </div>
+  {% if username == userData['Username'] %}
+  <div class="text-center">
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#UpdateModal">Edit Profile</button>
+  </div>
 </div>
 {% if recentPosts == [] %}
-<p class="profile-title text-center my-5">User has not posted anything</p>
+<p class="profile-title text-center my-5">You have not posted anything</p>
+<div class="text-center">
+  <a href="/addPost/{{sessionID}}" class="btn btn-danger">Add Post</a>
+</div>
 {% else %}
-<p class="profile-title text-center my-3">User's Posts</p>
+<p class="profile-title text-center my-3">Your Posts</p>
+  <div class="col-md-10 mx-auto">
+    {% for post in recentPosts %}
+      <div class="post-preview">
+        <a href="/viewPost/{{ post.PostID }}/{{sessionID}}">
+          <h1 class="post-title">
+            {{ post.Title }}
+          </h1>
+          <h2 class="post-subtitle">
+            {{ post.Content }} <span style="color: #6a6a6a; font-size: 14px;">... See More</span>
+          </h2>
+        </a>
+        <span class="post-meta">Posted by <a href="#">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="#">{{ post.Topic }}</a></span>
+
+        <span class="post-votes ml-auto float-right">
+          <a href="#"><i class="fa fa-arrow-up"></i></a>
+          <span id="postTotalVotes">{{ post.TotalVotes }}</span>
+          <a href="#"><i class="fa fa-arrow-down"></i></a>
+        </span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% else %}
+</div>
+</div>
+{% if recentPosts == [] %}
+<p class="profile-title text-center my-5">{{userData['Username']}} has not posted anything</p>
+{% else %}
+<p class="profile-title text-center my-3">{{userData['Username']}}'s Posts</p>
   <div class="col-md-10 mx-auto">
     {% for post in recentPosts %}
       <div class="post-preview">
@@ -106,6 +124,7 @@
       </div>
     {% endfor %}
   </div>
+  {% endif %}
   {% endif %}
 
 

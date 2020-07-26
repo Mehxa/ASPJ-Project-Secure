@@ -354,10 +354,6 @@ def login():
             sessionID += 1
             sessionInfo['sessionID'] = sessionID
             sessions[sessionID] = sessionInfo
-            sessionRecord = open("templates\Files\sessionRecord.txt","a")
-            record = "%s signed in at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
-            sessionRecord.write(record)
-            sessionRecord.close()
             sql = "SELECT * FROM admin WHERE UserID=%s"
             val = (int(findUser['UserID']),)
             dictCursor.execute(sql, val)
@@ -382,9 +378,6 @@ def logout():
     sessionInfo['currentUser'] = 0
     sessionInfo['username'] = ''
     sessions.pop(sessionID)
-    sessionRecord = open("templates\Files\sessionRecord.txt", "a")
-    record = "%s signed out at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
-    sessionRecord.close()
     return redirect('/home')
 
 @app.route('/signup', methods=["GET", "POST"])
@@ -423,9 +416,6 @@ def signUp():
             sessionID += 1
             sessionInfo['sessionID'] = sessionID
             sessions[sessionID] = sessionInfo
-            sessionRecord = open("templates\Files\sessionRecord.txt", "a")
-            record = "New account %s created at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
-            sessionRecord.close()
             flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home')
 
@@ -539,9 +529,10 @@ def adminUserProfile(username):
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.TopicID, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " WHERE user.Username='" + str(username) + "'"
+    sql += " WHERE user.Username=%s"
     sql += " ORDER BY post.PostID DESC LIMIT 6"
-    dictCursor.execute(sql)
+    val = (str(username),)
+    dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
     userData['Credibility'] = 0
     if userData['Status'] == None:
@@ -550,13 +541,11 @@ def adminUserProfile(username):
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         userData['Credibility'] += post['TotalVotes']
         post['Content'] = post['Content'][:200]
-    sql = "SELECT UserID, Username, isAdmin FROM user WHERE"
-    sql += " Username='" + str(username) + "'"
-    dictCursor.execute(sql)
+    sql = "SELECT UserID, Username FROM user WHERE Username =%s"
+    dictCursor.execute(sql, val)
     user = dictCursor.fetchone()
-    admin = user['isAdmin']
 
-    return render_template("adminProfile.html", currentPage = "myProfile", **sessionInfo, userData = userData, recentPosts = recentPosts, admin=admin)
+    return render_template("adminProfile.html", currentPage = "myProfile", **sessionInfo, userData = userData, recentPosts = recentPosts, admin=False)
 
 
 

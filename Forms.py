@@ -2,6 +2,7 @@ from wtforms import Form, validators, StringField, TextAreaField, PasswordField,
 from wtforms.fields import DateField
 from wtforms_components import DateRange
 from datetime import date
+from flask_wtf import RecaptchaField
 
 class SearchBarForm(Form):
     searchQuery = StringField('Search Query', render_kw={"placeholder": "Search for a post..."})
@@ -12,6 +13,7 @@ class FeedbackForm(Form):
     comment = TextAreaField('Comment', [validators.DataRequired()], render_kw={"rows": 10, "placeholder": "Enter comment here..."})
 
 class LoginForm(Form):
+    recaptcha = RecaptchaField()
     username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [validators.DataRequired()])
 

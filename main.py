@@ -13,6 +13,7 @@ import asyncio
 from threading import Thread
 
 
+
 db = mysql.connector.connect(
     host="localhost",
     user="secureASPJuser",
@@ -41,6 +42,9 @@ app.config.update(
 	)
 
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+app.config['RECAPTCHA_PUBLIC_KEY'] = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
+app.config['RECAPTCHA_PRIVATE_KEY'] = '6LdVRrYZAAAAAM-F0Ur8eLAgwjvp3OqpZwAhQHby'
+
 mail = Mail(app)
 bcrypt = Bcrypt(app)
 """ For testing purposes only. To make it convenient cause I can't remember all the account names.
@@ -63,6 +67,8 @@ sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
 test = bcrypt.generate_password_hash("Test")
 
+# captcha_key = '6LdgFLYZAAAAAC9nKyG3lnmsuVvp7Bh2xB673dSF'
+# capthca_secret = '6LdgFLYZAAAAALldW3bMk_5COICxWAKHe2QFJrGd'
 
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)

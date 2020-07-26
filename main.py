@@ -520,6 +520,8 @@ def indivTopic(topicID, sessionId):
     return render_template('indivTopic.html', currentPage='indivTopic', **sessionInfo, recentPosts=recentPosts, topic = topic[0])
 
 @app.route('/adminProfile/<username>', methods=["GET", "POST"])
+@login_required
+@admin_required
 def adminUserProfile(username):
     sessionInfo = sessions[sessionID]
     sql = "SELECT * FROM user WHERE user.Username=%s"
@@ -550,6 +552,8 @@ def adminUserProfile(username):
 
 
 @app.route('/adminHome', methods=["GET", "POST"])
+@login_required
+@admin_required
 def adminHome():
     sessionInfo = sessions[sessionID]
     searchBarForm = Forms.SearchBarForm(request.form)
@@ -571,6 +575,8 @@ def adminHome():
     return render_template('adminHome.html', currentPage='adminHome', **sessionInfo, searchBarForm = searchBarForm,recentPosts = recentPosts)
 
 @app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
+@login_required
+@admin_required
 def adminViewPost(postID):
     sessionInfo = sessions[sessionID]
 
@@ -600,6 +606,8 @@ def adminViewPost(postID):
     return render_template('adminViewPost.html', currentPage='adminViewPost', **sessionInfo, post = post, commentList = commentList)
 
 @app.route('/adminTopics')
+@login_required
+@admin_required
 def adminTopics():
     # uncomment from here
     sessionInfo  = sessions[sessionID]
@@ -609,6 +617,8 @@ def adminTopics():
     return render_template('adminTopics.html', currentPage='adminTopics', **sessionInfo, listOfTopics=listOfTopics)
 
 @app.route('/adminIndivTopic/<topicID>', methods=["GET", "POST"])
+@login_required
+@admin_required
 def adminIndivTopic(topicID):
     sessionInfo = sessions[sessionID]
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
@@ -628,6 +638,8 @@ def adminIndivTopic(topicID):
     return render_template('adminIndivTopic.html', currentPage='adminIndivTopic', **sessionInfo, recentPosts=recentPosts, topic=topic[0])
 
 @app.route('/addTopic', methods=["GET", "POST"])
+@login_required
+@admin_required
 def addTopic():
     sessionInfo = sessions[sessionID]
     # uncomment here
@@ -656,6 +668,8 @@ def addTopic():
     return render_template('addTopic.html', currentPage='addTopic', **sessionInfo, topicForm=topicForm)
 
 @app.route('/adminUsers')
+@login_required
+@admin_required
 def adminUsers():
     sessionInfo = sessions[sessionID]
     sql = "SELECT Username From user"
@@ -665,6 +679,8 @@ def adminUsers():
     return render_template('adminUsers.html', currentPage='adminUsers', **sessionInfo, listOfUsernames = listOfUsernames)
 
 @app.route('/adminDeleteUser/<username>', methods=['POST'])
+@login_required
+@admin_required
 def deleteUser(username):
     user_email = "SELECT Email FROM user WHERE user.username=%s"
     val = (username,)
@@ -688,6 +704,8 @@ def deleteUser(username):
     return redirect('/adminUsers')
 
 @app.route('/adminDeletePost/<postID>', methods=['POST'])
+@login_required
+@admin_required
 def deletePost(postID):
     sql = "SELECT post.Content, post.DatetimePosted, post.postID, user.Username, user.email "
     sql += "FROM post"
@@ -715,7 +733,10 @@ def deletePost(postID):
         print("goes into except")
 
     return redirect('/adminHome')
+
 @app.route('/adminFeedback')
+@login_required
+@admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
@@ -727,6 +748,8 @@ def adminFeedback():
     return render_template('adminFeedback.html', currentPage='adminFeedback', **sessionInfo, feedbackList=feedbackList)
 
 @app.route('/replyFeedback/<feedbackID>',methods=["GET","POST"])
+@login_required
+@admin_required
 def replyFeedback(feedbackID):
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
@@ -759,6 +782,8 @@ def replyFeedback(feedbackID):
 
 
 @app.route('/adminFiles')
+@login_required
+@admin_required
 def list_files():
     files = []
     for filename in os.listdir(app.config['UPLOAD_FOLDER']):
@@ -769,6 +794,8 @@ def list_files():
     return render_template('adminFiles.html', files=files, **sessionInfo)
 
 @app.route('/adminFiles/<path:path>')
+@login_required
+@admin_required
 def download(path):
     return send_from_directory(directory=app.config['UPLOAD_FOLDER'], filename=path, as_attachment=True)
 

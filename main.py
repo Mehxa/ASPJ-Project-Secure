@@ -195,7 +195,7 @@ def home():
 def searchPosts():
     sessionInfo['prevPage']= request.url_rule
     searchBarForm = Forms.SearchBarForm(request.form)
-    searchBarForm.topic.choices = DatabaseManager.get_all_topics('all')
+    searchBarForm.topic.choices = get_all_topics('all')
     if request.method == 'POST' and searchBarForm.validate():
         return redirect(url_for('searchPosts', searchQuery = searchBarForm.searchQuery.data, topic = searchBarForm.topic.data))
 

@@ -5,7 +5,7 @@ from datetime import date
 
 class SearchBarForm(Form):
     searchQuery = StringField('Search Query', render_kw={"placeholder": "Search for a post..."})
-    topic = SelectField('Topic', coerce=int)
+    topic = SelectField('Topic')
 
 class FeedbackForm(Form):
     reason = StringField('Reason', [validators.DataRequired()], render_kw={"placeholder": "e.g. Feedback regarding post moderation"})
@@ -31,7 +31,7 @@ class SignUpForm(Form):
     confirmPassword = PasswordField('Re-enter Password', [validators.DataRequired()])
 
 class PostForm(Form):
-    topic = SelectField('Topic', coerce=int)
+    topic = SelectField('Topic')
     title = StringField('Title', [validators.DataRequired()], render_kw={"placeholder": "e.g. Error Exception handling in Python"})
     content = TextAreaField('Content', [validators.DataRequired()], render_kw={"rows": 10, "placeholder": "Enter content here..."})
 

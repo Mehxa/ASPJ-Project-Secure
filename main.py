@@ -345,7 +345,7 @@ def login():
         password = password.encode("utf8")
         valid = bcrypt.check_password_hash(password, loginForm.password.data)
         print(valid)
-        if findUser==None:
+        if findUser==None or not valid:
             loginForm.password.errors.append('Wrong email or password.')
         else:
             sessionInfo['login'] = True

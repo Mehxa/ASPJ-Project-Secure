@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort
 from flask_bcrypt import *
 import mysql.connector, re
 import Forms
@@ -798,6 +798,10 @@ def list_files():
 @admin_required
 def download(path):
     return send_from_directory(directory=app.config['UPLOAD_FOLDER'], filename=path, as_attachment=True)
+
+@app.errorhandler(404)
+def error404(e):
+    return render_template('error.html')
 
 if __name__ == "__main__":
     app.run(debug=True)

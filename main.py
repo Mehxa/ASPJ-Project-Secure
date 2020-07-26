@@ -54,18 +54,26 @@ sessionID = 0
 sessions={}
 sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
 # sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
+# Password: NotABot123
 # sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
+# Password: CoffeeGirl123
+sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
+# Password: Mehxa123
 # sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
+# Password: Kobot123
 # sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
+# Password: MaryTan123
 # sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
+# Password: nuts@coco
 # sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
+# Password: hohohomerrychristmas
 # sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
-sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
+# Password: iaminevitable
+# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
+# Password: burgerking02
 sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
-test = bcrypt.generate_password_hash("Test")
 
 # captcha_key = '6LdgFLYZAAAAAC9nKyG3lnmsuVvp7Bh2xB673dSF'
 # capthca_secret = '6LdgFLYZAAAAALldW3bMk_5COICxWAKHe2QFJrGd'
@@ -333,6 +341,7 @@ def login():
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
         password = findUser["Password"]
+        password = "$2b$12$" + password
         password = password.encode("utf8")
         valid = bcrypt.check_password_hash(password, loginForm.password.data)
         print(valid)
@@ -426,7 +435,7 @@ def signUp():
 def profile(username, sessionId):
     # global sessionID
     sessionInfo = sessions[sessionID]
-    updateProfileForm = Forms.SignUpForm(request.form)
+    updateProfileForm = Forms.UpdateForm(request.form)
     sql = "SELECT * FROM user WHERE user.Username=%s"
     val = (username,)
     dictCursor.execute(sql, val)
@@ -434,9 +443,10 @@ def profile(username, sessionId):
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " WHERE user.Username='" + str(username) + "'"
+    sql += " WHERE user.Username=%s"
     sql += " ORDER BY post.PostID DESC LIMIT 6"
-    dictCursor.execute(sql)
+    val = (str(username),)
+    dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
     userData['Credibility'] = 0
     if userData['Status'] == None:
@@ -449,16 +459,17 @@ def profile(username, sessionId):
     if request.method == "POST" and updateProfileForm.validate():
         oldUsername = username
         oldUserID = sessionInfo['currentUserID']
+        password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
+        password = password_hash[7:]
         sql = "UPDATE user "
-        sql += "SET Username='" + updateProfileForm.username.data + "',"
-        sql += "Password='" + updateProfileForm.password.data + "',"
-        sql += "Name='" + updateProfileForm.name.data + "',"
-        sql += "Email='" + updateProfileForm.email.data + "',"
-        sql += "Status='" + updateProfileForm.status.data + "',"
-        sql += "Birthday='" + str(updateProfileForm.dob.data) + "'"
-        sql += "WHERE UserID='" + str(sessionInfo['currentUserID']) + "'"
+        sql += "SET Username=%s,"
+        sql += "Password=%s,"
+        sql += "Email=%s,"
+        sql += "Status=%s"
+        sql += "WHERE UserID=%s"
         try:
-            tupleCursor.execute(sql)
+            val = (updateProfileForm.username.data, password, updateProfileForm.email.data, updateProfileForm.status.data, str(sessionInfo["currentUserID"]))
+            tupleCursor.execute(sql, val)
             db.commit()
 
         except mysql.connector.errors.IntegrityError as errorMsg:
@@ -470,21 +481,14 @@ def profile(username, sessionId):
                 flash("This username is already taken!", "success")
                 updateProfileForm.username.errors.append('This username is already taken.')
         else:
-            sql = "SELECT UserID, Username FROM user WHERE"
-            sql += " Username='" + updateProfileForm.username.data + "'"
-            sql += " AND Password='" + updateProfileForm.password.data + "'"
-            tupleCursor.execute(sql)
+            sql = "SELECT UserID, Username FROM user WHERE user.Username=%s"
+            val = (updateProfileForm.username.data,)
+            tupleCursor.execute(sql, val)
             findUser = tupleCursor.fetchone()
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser[0])
             sessionInfo['username'] = findUser[1]
             sessions[sessionID] = sessionInfo
-            sessionRecord = open("templates\Files\sessionRecord.txt", "a")
-            if oldUsername == sessionInfo['username']:
-                record = "Account %s updated at %s, sessionID: %d \n" % (sessionInfo['username'], datetime.now(), sessionInfo['sessionID'])
-            else:
-                record = "Account %s updated at %s, account's username is now %s sessionID: %d \n" % (oldUsername,  datetime.now(), sessionInfo['username'], sessionInfo['sessionID'])
-            sessionRecord.close()
 
             if sessionInfo['currentUserID'] != oldUserID:
                 flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')

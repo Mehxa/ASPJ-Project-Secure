@@ -26,6 +26,17 @@ class SignUpForm(Form):
     email = StringField('Email Address', [validators.DataRequired(), validators.Regexp(r'^.+@[^.].*\.[a-z]{2,10}$', message="Invalid email address.")])
     username = StringField('Username', [validators.DataRequired()])
     dob = DateField('Date of Birth', [DateRange(max=date(minYear, month, day), message="You have to be at least 13 years old to register for an account.")])
+    status = StringField('Status')
+    password = PasswordField('New Password', [
+        validators.DataRequired(),
+        validators.EqualTo('confirmPassword', message='Passwords do not match.')
+    ])
+    confirmPassword = PasswordField('Re-enter Password', [validators.DataRequired()])
+
+class UpdateForm(Form):
+    email = StringField('Email Address', [validators.DataRequired(), validators.Regexp(r'^.+@[^.].*\.[a-z]{2,10}$', message="Invalid email address.")])
+    username = StringField('Username', [validators.DataRequired()])
+    status = StringField('Status')
     password = PasswordField('New Password', [
         validators.DataRequired(),
         validators.EqualTo('confirmPassword', message='Passwords do not match.')

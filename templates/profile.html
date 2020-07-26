@@ -17,24 +17,6 @@
     <hr class="mx-auto mb-3">
     <div class="profile-field">
       <div class="col-md-6">
-        <i class="fa fa-id-card-o mr-3" aria-hidden="true" style="font-size:24px"></i>
-        <span class="field-title">Name:</span>
-      </div>
-      <div class="col-md-6">
-        <p class="value">{{userData['Name']}}</p>
-      </div>
-    </div>
-    <div class="profile-field">
-      <div class="col-md-6">
-        <i class="fa fa-gift mr-3" aria-hidden="true" style="font-size:24px"></i>
-      <span class="field-title">Birthday:</span>
-      </div>
-      <div class="col-md-6">
-        <p class="value">{{userData['Birthday']}}</p>
-      </div>
-    </div>
-    <div class="profile-field">
-      <div class="col-md-6">
         <i class="fa fa-child mr-3" aria-hidden="true" style="font-size:24px"></i>
       <span class="field-title">Status:</span>
       </div>
@@ -132,14 +114,6 @@
 
           <div class="form-group">
             {{render_field(updateProfileForm.username, class= "form-control", value=userData['Username'])}}
-          </div>
-
-          <div class="form-group">
-            {{render_field(updateProfileForm.name, class= "form-control", value=userData['Name'])}}
-          </div>
-
-          <div class="form-group">
-            {{render_field(updateProfileForm.dob, class= "form-control", type="date", value=userData['Birthday'])}}
           </div>
 
           <div class="form-group">

@@ -387,6 +387,7 @@ def signUp():
 
     if request.method == 'POST' and signUpForm.validate():
         password_hash = bcrypt.generate_password_hash(signUpForm.password.data).decode("utf8")
+        password_hash = password_hash[7:]
         print(password_hash)
         sql = "INSERT INTO user (Email, Username, Birthday, Password) VALUES"
         sql += " ('" + signUpForm.email.data + "'"

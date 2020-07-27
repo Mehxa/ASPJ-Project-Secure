@@ -11,7 +11,7 @@ from flask_mail import Mail, Message
 import sys
 import asyncio
 from threading import Thread
-
+import flask_monitoringdashboard as dashboard
 
 
 db = mysql.connector.connect(
@@ -27,6 +27,8 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
+dashboard.config.init_from(file='config.cfg')
+dashboard.bind(app)
 app.config.update(
     MAIL_SERVER= 'smtp.office365.com',
     MAIL_PORT= 587,
@@ -94,8 +96,7 @@ def admin_required(function_to_wrap):
         if sessionInfo['isAdmin']==1:
             return function_to_wrap(*args, **kwargs)
         else:
-            flash("Unauthorised user. Access denied.", "danger")
-            return redirect(sessionInfo['prevPage'])
+            abort(404)
     return wrap
 
 def get_all_topics(option):

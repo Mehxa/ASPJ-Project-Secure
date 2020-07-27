@@ -12,6 +12,7 @@ import sys
 import asyncio
 from threading import Thread
 import flask_monitoringdashboard as dashboard
+import requests
 
 
 db = mysql.connector.connect(

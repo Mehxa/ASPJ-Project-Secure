@@ -3,6 +3,7 @@ from wtforms.fields import DateField
 from wtforms_components import DateRange
 from datetime import date
 from flask_wtf import RecaptchaField
+import re
 
 class SearchBarForm(Form):
     searchQuery = StringField('Search Query', render_kw={"placeholder": "Search for a post..."})
@@ -29,6 +30,7 @@ class SignUpForm(Form):
     status = StringField('Status')
     password = PasswordField('New Password', [
         validators.DataRequired(),
+        validators.Regexp(re.compile('^(?=\S{10,20}$)(?=.*?\d)(?=.*?[a-z])(?=.*?[A-Z])(?=.*?[^A-Za-z\s0-9])'), message= "Password must contain 10-20 characters, number, uppercase, lowercase, special character."),
         validators.EqualTo('confirmPassword', message='Passwords do not match.')
     ])
     confirmPassword = PasswordField('Re-enter Password', [validators.DataRequired()])

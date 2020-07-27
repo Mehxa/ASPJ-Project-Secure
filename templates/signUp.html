@@ -29,7 +29,9 @@
         <div class="form-group">
           {{render_field(signUpForm.confirmPassword, class= "form-control")}}
         </div>
+        <div class="g-recaptcha" data-sitekey={{sitekey}}>
 
+        </div>
         <p>Already have an account? <a href="/login">Login</a></p>
 
         <div class="form-group">

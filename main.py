@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, json
 from flask_bcrypt import *
 import mysql.connector, re
 import Forms
@@ -11,6 +11,7 @@ from flask_mail import Mail, Message
 import sys
 import asyncio
 from threading import Thread
+import requests
 
 
 
@@ -178,6 +179,7 @@ def main():
 
 @app.route('/home', methods=["GET", "POST"])
 def home():
+#     abort(500)
     sessionInfo['prevPage']= request.url_rule
     searchBarForm = Forms.SearchBarForm(request.form)
     searchBarForm.topic.choices = get_all_topics('all')
@@ -331,8 +333,16 @@ def feedback(sessionId):
 
     return render_template('feedback.html', currentPage='feedback', **sessionInfo, feedbackForm = feedbackForm)
 
+def is_human(captcha_response):
+    secret = '6LdVRrYZAAAAAM-F0Ur8eLAgwjvp3OqpZwAhQHby'
+    payload = {'response': captcha_response, 'secret':secret}
+    response = requests.post( "https://www.google.com/recaptcha/api/siteverify",  payload )
+    response_text = json.loads(response.text)
+    return response_text['success']
+
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
     global sessionID
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
@@ -345,6 +355,11 @@ def login():
         password = password.encode("utf8")
         valid = bcrypt.check_password_hash(password, loginForm.password.data)
         print(valid)
+        captcha_response = request.form['g-recaptcha-response']
+        if is_human(captcha_response):
+            print("human")
+        else:
+            print("U r a bot")
         if findUser==None or not valid:
             loginForm.password.errors.append('Wrong email or password.')
         else:
@@ -367,7 +382,7 @@ def login():
 
             return redirect('/home') # Change this later to redirect to profile page
 
-    return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm)
+    return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey)
 
 @app.route('/logout')
 @login_required
@@ -382,10 +397,16 @@ def logout():
 
 @app.route('/signup', methods=["GET", "POST"])
 def signUp():
+    sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
     global sessionID
     signUpForm = Forms.SignUpForm(request.form)
 
     if request.method == 'POST' and signUpForm.validate():
+        captcha_response = request.form['g-recaptcha-response']
+        if is_human(captcha_response):
+            print("human")
+        else:
+            print("U r a bot")
         password_hash = bcrypt.generate_password_hash(signUpForm.password.data).decode("utf8")
         print(password_hash)
         sql = "INSERT INTO user (Email, Username, Birthday, Password) VALUES"
@@ -419,7 +440,7 @@ def signUp():
             flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home')
 
-    return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm)
+    return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm, sitekey=sitekey)
 
 @app.route('/profile/<username>/<sessionId>', methods=["GET", "POST"])
 def profile(username, sessionId):
@@ -801,7 +822,12 @@ def download(path):
 
 @app.errorhandler(404)
 def error404(e):
-    return render_template('error.html')
+    msg = 'Oops! Page not found. Head back to the home page'
+    return render_template('error.html', msg=msg)
 
+@app.errorhandler(500)
+def error404(e):
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    return render_template('error.html', msg=msg)
 if __name__ == "__main__":
     app.run(debug=True)

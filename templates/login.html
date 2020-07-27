@@ -20,8 +20,9 @@
         <div class="form-group">
           {{render_field(loginForm.password, class= "form-control")}}
         </div>
-        <div class="form-group">
-          {{render_field(loginForm.recaptcha, class= "form-control")}}
+
+          <div class="g-recaptcha" data-sitekey={{sitekey}}>
+
         </div>
 
         <p>Don't have an account? <a href="/signup">Sign Up</a></p>

@@ -332,8 +332,8 @@ def feedback(sessionId):
 
     if request.method == 'POST' and feedbackForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-        sql = 'INSERT INTO feedback (UserID, Reason, Content, DateTimePosted) VALUES (%s, %s, %s, %s)'
-        val = (sessionInfo['currentUserID'], feedbackForm.reason.data, feedbackForm.comment.data, dateTime)
+        sql = 'INSERT INTO feedback (UserID, Reason, Content, DateTimePosted, Resolved) VALUES (%s, %s, %s, %s, %s)'
+        val = (sessionInfo['currentUserID'], feedbackForm.reason.data, feedbackForm.comment.data, dateTime, 0)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Feedback sent!', 'success')
@@ -423,14 +423,11 @@ def signUp():
             print("U r a bot")
         password_hash = bcrypt.generate_password_hash(signUpForm.password.data).decode("utf8")
         password_hash = password_hash[7:]
-        print(password_hash)
-        sql = "INSERT INTO user (Email, Username, Birthday, Password) VALUES"
-        sql += " ('" + signUpForm.email.data + "'"
-        sql += " , '" + signUpForm.username.data + "'"
-        sql += " , '" + str(signUpForm.dob.data) + "'"
-        sql += " , '" + password_hash + "')"
+
         try:
-            tupleCursor.execute(sql)
+            sql = "INSERT INTO user (UserID, Email, Username, Birthday, Password) VALUES (%s, %s, %s, %s, %s)"
+            val = (1, signUpForm.email.data, signUpForm.username.data, str(signUpForm.dob.data), password_hash)
+            tupleCursor.execute(sql, val)
             db.commit()
 
         except mysql.connector.errors.IntegrityError as errorMsg:
@@ -439,6 +436,7 @@ def signUp():
                 signUpForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
             elif 'username' in errorMsg.lower():
                 signUpForm.username.errors.append('This username is already taken.')
+            logfile.info("User account creation failure: Invalid email or username.")
 
         else:
             sql = "SELECT UserID, Username FROM user WHERE"
@@ -452,6 +450,7 @@ def signUp():
             sessionID += 1
             sessionInfo['sessionID'] = sessionID
             sessions[sessionID] = sessionInfo
+            logfile.info("User Account Created: User %s" %sessionInfo['username'])
             flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home')
 
@@ -769,6 +768,7 @@ def adminFeedback():
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
     sql += "FROM feedback"
     sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
+    sql += " WHERE feedback.Resolved = 0"
     dictCursor.execute(sql)
     feedbackList = dictCursor.fetchall()
     print(feedbackList)
@@ -781,8 +781,10 @@ def replyFeedback(feedbackID):
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
     sql += "FROM feedback"
     sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
-    sql += " WHERE feedback.FeedbackID = " + str(feedbackID)
-    dictCursor.execute(sql)
+    sql += " WHERE feedback.FeedbackID = %s"
+    # sql += " AND feedback.Resolved = 0"
+    val = (str(feedbackID),)
+    dictCursor.execute(sql, val)
     feedbackList = dictCursor.fetchall()
     print(feedbackList)
     replyForm = Forms.ReplyFeedbackForm(request.form)
@@ -799,10 +801,22 @@ def replyFeedback(feedbackID):
             msg.html = render_template('email.html', postID="feedback reply", username=feedbackList[0]['Username'], content=feedbackList[0]['Content'], posted=feedbackList[0]['DatetimePosted'], reply=reply)
             mail.send(msg)
             print("\n\n\nMAIL SENT\n\n\n")
+            # sql = "UPDATE feedback "
+            # sql += "SET Resolved=1"
+            # sql += "WHERE FeedbackID = " +str(feedbackID)
+            # tupleCursor.execute(sql)
+            # db.commit()
+
         except Exception as e:
             print(e)
             print("Error:", sys.exc_info()[0])
             print("goes into except")
+        sql = "UPDATE feedback "
+        sql += " SET Resolved=1"
+        sql += " WHERE FeedbackID = %s"
+        val = (str(feedbackID),)
+        tupleCursor.execute(sql, val)
+        db.commit()
         return redirect('/adminFeedback')
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
@@ -810,13 +824,13 @@ def replyFeedback(feedbackID):
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
-    logfile.warn("Error 401: Unauthorized Access to Admin Page")
+    logfile.warning("Error 401: Unauthorized Access to Admin Page")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(403)
 def error403(e):
     msg = 'Erorr 403: Forbidden'
-    logfile.warn("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
+    logfile.warning("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(404)

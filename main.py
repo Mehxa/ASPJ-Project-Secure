@@ -13,7 +13,7 @@ import asyncio
 from threading import Thread
 import flask_monitoringdashboard as dashboard
 import requests
-import logging
+import logging, logging.config, yaml
 
 
 db = mysql.connector.connect(
@@ -29,10 +29,8 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-logging.basicConfig(filename='log.log'
-                    , level=logging.CRITICAL
-                    , format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s'
-                    )
+logging.config.dictConfig(yaml.load(open('logging.conf')))
+logfile = logging.getLogger('file')
 
 dashboard.config.init_from(file='config.cfg')
 dashboard.bind(app)
@@ -66,7 +64,7 @@ sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
 # Password: NotABot123
 # sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
 # Password: CoffeeGirl123
-sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
+# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
 # Password: Mehxa123
 # sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
 # Password: Kobot123
@@ -360,37 +358,43 @@ def login():
         val = (loginForm.username.data,)
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
-        password = findUser["Password"]
-        password = "$2b$12$" + password
-        password = password.encode("utf8")
-        valid = bcrypt.check_password_hash(password, loginForm.password.data)
-        print(valid)
-        captcha_response = request.form['g-recaptcha-response']
-        if is_human(captcha_response):
-            print("human")
-        else:
-            print("U r a bot")
-        if findUser==None or not valid:
+        if findUser == None:
             loginForm.password.errors.append('Wrong email or password.')
+            logfile.warn("Failed Login Attempt: User %s" %loginForm.username.data)
         else:
-            sessionInfo['login'] = True
-            sessionInfo['currentUserID'] = int(findUser['UserID'])
-            sessionInfo['username'] = findUser['Username']
-            sessionID += 1
-            sessionInfo['sessionID'] = sessionID
-            sessions[sessionID] = sessionInfo
-            sql = "SELECT * FROM admin WHERE UserID=%s"
-            val = (int(findUser['UserID']),)
-            dictCursor.execute(sql, val)
-            findAdmin = dictCursor.fetchone()
-            flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-            if findAdmin!=None:
-                sessionInfo['isAdmin'] = True
-                return redirect('/adminHome')
+            password = findUser["Password"]
+            password = "$2b$12$" + password
+            password = password.encode("utf8")
+            valid = bcrypt.check_password_hash(password, loginForm.password.data)
+            print(valid)
+            if not valid:
+                loginForm.password.errors.append('Wrong email or password.')
             else:
-                sessionInfo['isAdmin'] = False
+                captcha_response = request.form['g-recaptcha-response']
+                if is_human(captcha_response):
+                    print("human")
+                else:
+                    print("U r a bot")
+                sessionInfo['login'] = True
+                sessionInfo['currentUserID'] = int(findUser['UserID'])
+                sessionInfo['username'] = findUser['Username']
+                sessionID += 1
+                sessionInfo['sessionID'] = sessionID
+                sessions[sessionID] = sessionInfo
+                sql = "SELECT * FROM admin WHERE UserID=%s"
+                val = (int(findUser['UserID']),)
+                dictCursor.execute(sql, val)
+                findAdmin = dictCursor.fetchone()
+                flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
+                if findAdmin!=None:
+                    sessionInfo['isAdmin'] = True
+                    logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
+                    return redirect('/adminHome')
+                else:
+                    sessionInfo['isAdmin'] = False
+                    logfile.info("Successful User Login: User %s" %sessionInfo['username'])
 
-            return redirect('/home') # Change this later to redirect to profile page
+                return redirect('/home') # Change this later to redirect to profile page
 
     return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey)
 
@@ -457,7 +461,8 @@ def signUp():
 def profile(username, sessionId):
     # global sessionID
     sessionInfo = sessions[sessionID]
-    updateProfileForm = Forms.UpdateForm(request.form)
+    updateEmailForm = Forms.UpdateEmail(request.form)
+    updateStatusForm = Forms.UpdateStatus(request.form)
     sql = "SELECT * FROM user WHERE user.Username=%s"
     val = (username,)
     dictCursor.execute(sql, val)
@@ -478,30 +483,27 @@ def profile(username, sessionId):
         userData['Credibility'] += post['TotalVotes']
         post['Content'] = post['Content'][:200]
 
-    if request.method == "POST" and updateProfileForm.validate():
-        oldUsername = username
-        oldUserID = sessionInfo['currentUserID']
-        password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
-        password = password_hash[7:]
+    if request.method == "POST" and updateEmailForm.validate():
+        # oldUsername = username
+        # oldUserID = sessionInfo['currentUserID']
+        # password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
+        # password = password_hash[7:]
         sql = "UPDATE user "
-        sql += "SET Username=%s,"
-        sql += "Password=%s,"
-        sql += "Email=%s,"
-        sql += "Status=%s"
+        sql += "SET Email=%s,"
         sql += "WHERE UserID=%s"
         try:
-            val = (updateProfileForm.username.data, password, updateProfileForm.email.data, updateProfileForm.status.data, str(sessionInfo["currentUserID"]))
+            val = (updateEmailForm.email.data, str(sessionInfo["currentUserID"]))
             tupleCursor.execute(sql, val)
             db.commit()
 
         except mysql.connector.errors.IntegrityError as errorMsg:
             errorMsg = str(errorMsg)
             if 'email' in errorMsg.lower():
-                updateProfileForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
+                updateEmailForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
                 flash("This email has already been linked to another account. Please use a different email.", "success")
             elif 'username' in errorMsg.lower():
                 flash("This username is already taken!", "success")
-                updateProfileForm.username.errors.append('This username is already taken.')
+                updateEmailForm.username.errors.append('This username is already taken.')
         else:
             sql = "SELECT UserID, Username FROM user WHERE user.Username=%s"
             val = (updateProfileForm.username.data,)
@@ -521,7 +523,7 @@ def profile(username, sessionId):
 
 
 
-    return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts, updateProfileForm=updateProfileForm)
+    return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts, updateEmailForm=updateEmailForm)
 
 @app.route('/topics')
 def topics():
@@ -820,41 +822,29 @@ def replyFeedback(feedbackID):
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
 
-@app.route('/adminFiles')
-@admin_required
-def list_files():
-    files = []
-    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
-        path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        if os.path.isfile(path):
-            files.append(filename)
-    print(files)
-    return render_template('adminFiles.html', files=files, **sessionInfo)
-
-@app.route('/adminFiles/<path:path>')
-@admin_required
-def download(path):
-    return send_from_directory(directory=app.config['UPLOAD_FOLDER'], filename=path, as_attachment=True)
-
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
+    logfile.warn("Error 401: Unauthorized Access to Admin Page")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(403)
 def error403(e):
     msg = 'Erorr 403: Forbidden'
+    logfile.warn("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(404)
 def error404(e):
     msg = 'Oops! Page not found. Head back to the home page'
+    logfile.error("Error 404: Page not found")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(500)
 def error500(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    logfile.error("Error 500: Internal Server Error")
     return render_template('error.html', msg=msg)
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=False)

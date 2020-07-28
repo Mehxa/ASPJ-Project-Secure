@@ -2,7 +2,7 @@
 --
 -- Host: 127.0.0.1    Database: secureblogdb
 -- ------------------------------------------------------
--- Server version	5.7.30-log
+-- Server version	8.0.20
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -23,13 +23,13 @@ DROP TABLE IF EXISTS `admin`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin` (
-  `AdminID` tinyint(4) NOT NULL AUTO_INCREMENT,
-  `UserID` int(11) NOT NULL,
+  `AdminID` tinyint NOT NULL AUTO_INCREMENT,
+  `UserID` int NOT NULL,
   PRIMARY KEY (`AdminID`),
   UNIQUE KEY `AdminID_UNIQUE` (`AdminID`),
   KEY `fk_admin_UserID_idx` (`UserID`),
   CONSTRAINT `fk_admin_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -50,13 +50,13 @@ DROP TABLE IF EXISTS `comment`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `comment` (
-  `CommentID` smallint(6) NOT NULL AUTO_INCREMENT,
-  `PostID` smallint(6) NOT NULL,
-  `UserID` int(11) NOT NULL,
+  `CommentID` smallint NOT NULL AUTO_INCREMENT,
+  `PostID` smallint NOT NULL,
+  `UserID` int NOT NULL,
   `DatetimePosted` datetime NOT NULL,
   `Content` mediumtext NOT NULL,
-  `Upvotes` mediumint(9) NOT NULL,
-  `Downvotes` mediumint(9) NOT NULL,
+  `Upvotes` mediumint NOT NULL,
+  `Downvotes` mediumint NOT NULL,
   PRIMARY KEY (`CommentID`),
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   UNIQUE KEY `CommentID_UNIQUE` (`CommentID`),
@@ -64,7 +64,7 @@ CREATE TABLE `comment` (
   KEY `fk_comment_UserID_idx` (`UserID`),
   CONSTRAINT `fk_comment_PostID` FOREIGN KEY (`PostID`) REFERENCES `post` (`PostID`) ON DELETE CASCADE,
   CONSTRAINT `fk_comment_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -85,14 +85,14 @@ DROP TABLE IF EXISTS `comment_votes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `comment_votes` (
-  `UserID` int(11) NOT NULL,
-  `CommentID` smallint(6) NOT NULL,
-  `Vote` tinyint(4) NOT NULL,
+  `UserID` int NOT NULL,
+  `CommentID` smallint NOT NULL,
+  `Vote` tinyint NOT NULL,
   PRIMARY KEY (`UserID`,`CommentID`),
   KEY `fk_comment_votes_CommentID_idx` (`CommentID`),
   CONSTRAINT `fk_coment_votes_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE,
   CONSTRAINT `fk_comment_votes_CommentID` FOREIGN KEY (`CommentID`) REFERENCES `comment` (`CommentID`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -112,18 +112,18 @@ DROP TABLE IF EXISTS `feedback`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `feedback` (
-  `FeedbackID` tinyint(4) NOT NULL AUTO_INCREMENT,
-  `UserID` int(11) NOT NULL,
+  `FeedbackID` tinyint NOT NULL AUTO_INCREMENT,
+  `UserID` int NOT NULL,
   `Reason` tinytext NOT NULL,
   `Content` mediumtext NOT NULL,
   `DatetimePosted` datetime NOT NULL,
-  `Resolved` tinyint(4) NOT NULL,
+  `Resolved` tinyint NOT NULL,
   PRIMARY KEY (`FeedbackID`),
   UNIQUE KEY `FeedbackID_UNIQUE` (`FeedbackID`),
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   KEY `fk_feedback_UserID_idx` (`UserID`),
   CONSTRAINT `fk_feedback_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -144,8 +144,8 @@ DROP TABLE IF EXISTS `password_history`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `password_history` (
-  `HistoryID` smallint(6) NOT NULL AUTO_INCREMENT,
-  `UserID` int(11) NOT NULL,
+  `HistoryID` smallint NOT NULL AUTO_INCREMENT,
+  `UserID` int NOT NULL,
   `Date_Changed` date NOT NULL,
   `Password` varchar(60) NOT NULL,
   PRIMARY KEY (`HistoryID`),
@@ -153,7 +153,7 @@ CREATE TABLE `password_history` (
   UNIQUE KEY `Password_UNIQUE` (`Password`),
   KEY `fk_password_history_UserID_idx` (`UserID`),
   CONSTRAINT `fk_password_history_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -173,14 +173,14 @@ DROP TABLE IF EXISTS `post`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `post` (
-  `PostID` smallint(6) NOT NULL AUTO_INCREMENT,
-  `TopicID` tinyint(4) NOT NULL,
-  `UserID` int(11) NOT NULL,
+  `PostID` smallint NOT NULL AUTO_INCREMENT,
+  `TopicID` tinyint NOT NULL,
+  `UserID` int NOT NULL,
   `DatetimePosted` datetime NOT NULL,
   `Title` text NOT NULL,
   `Content` mediumtext NOT NULL,
-  `Upvotes` mediumint(9) NOT NULL,
-  `Downvotes` mediumint(9) NOT NULL,
+  `Upvotes` mediumint NOT NULL,
+  `Downvotes` mediumint NOT NULL,
   PRIMARY KEY (`PostID`),
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   UNIQUE KEY `PostID_UNIQUE` (`PostID`),
@@ -188,7 +188,7 @@ CREATE TABLE `post` (
   KEY `fk_post_UserID_idx` (`UserID`),
   CONSTRAINT `fk_post_TopicID` FOREIGN KEY (`TopicID`) REFERENCES `topic` (`TopicID`) ON DELETE CASCADE,
   CONSTRAINT `fk_post_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -209,14 +209,14 @@ DROP TABLE IF EXISTS `post_votes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `post_votes` (
-  `UserID` int(11) NOT NULL,
-  `PostID` smallint(6) NOT NULL,
-  `Vote` tinyint(4) NOT NULL,
+  `UserID` int NOT NULL,
+  `PostID` smallint NOT NULL,
+  `Vote` tinyint NOT NULL,
   PRIMARY KEY (`UserID`,`PostID`),
   KEY `fk_post_votes_PostID_idx` (`PostID`),
   CONSTRAINT `fk_post_votes_PostID` FOREIGN KEY (`PostID`) REFERENCES `post` (`PostID`) ON DELETE CASCADE,
   CONSTRAINT `fk_post_votes_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -236,9 +236,9 @@ DROP TABLE IF EXISTS `reply`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `reply` (
-  `ReplyID` smallint(6) NOT NULL AUTO_INCREMENT,
-  `CommentID` smallint(6) NOT NULL,
-  `UserID` int(11) NOT NULL,
+  `ReplyID` smallint NOT NULL AUTO_INCREMENT,
+  `CommentID` smallint NOT NULL,
+  `UserID` int NOT NULL,
   `Content` mediumtext NOT NULL,
   `DatetimePosted` datetime NOT NULL,
   PRIMARY KEY (`ReplyID`),
@@ -246,7 +246,7 @@ CREATE TABLE `reply` (
   KEY `fk_reply_UserID_idx` (`UserID`),
   CONSTRAINT `fk_reply_CommentID` FOREIGN KEY (`CommentID`) REFERENCES `comment` (`CommentID`) ON DELETE CASCADE,
   CONSTRAINT `fk_reply_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -267,8 +267,8 @@ DROP TABLE IF EXISTS `topic`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `topic` (
-  `TopicID` tinyint(4) NOT NULL AUTO_INCREMENT,
-  `UserID` int(11) NOT NULL,
+  `TopicID` tinyint NOT NULL AUTO_INCREMENT,
+  `UserID` int NOT NULL,
   `Content` mediumtext NOT NULL,
   `DatetimePosted` datetime NOT NULL,
   PRIMARY KEY (`TopicID`),
@@ -276,7 +276,7 @@ CREATE TABLE `topic` (
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   KEY `fk_topic_UserID_idx` (`UserID`),
   CONSTRAINT `fk_topic_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -297,18 +297,20 @@ DROP TABLE IF EXISTS `user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user` (
-  `UserID` int(11) NOT NULL,
+  `UserID` int NOT NULL,
   `Email` varchar(50) NOT NULL,
   `Username` varchar(30) NOT NULL,
   `Password` varchar(60) NOT NULL,
   `Status` tinytext,
   `Birthday` date NOT NULL,
+  `Active` int NOT NULL DEFAULT '1',
+  `LoginAttempts` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`UserID`),
   UNIQUE KEY `UserID_UNIQUE` (`UserID`),
   UNIQUE KEY `Email_UNIQUE` (`Email`),
   UNIQUE KEY `Username_UNIQUE` (`Username`),
   UNIQUE KEY `Password_UNIQUE` (`Password`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -317,7 +319,7 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (102939,'jams@lorem-ipsum.com','NotABot','pLs9w6UwgX45NXhDa5Ea/.5P9Sykpc1p5QkQYK716UcclceNCWODO','NotABot is too lazy to add a status','0000-00-00'),(193006,'coconutmak@gmail.com','theauthenticcoconut','J8NLbB5JoJwNE2dERDMWde0gv6VRubetdRMEqxKSV8IGs5YwZcWIq','theauthenticcoconut is too lazy to add a status','2001-02-28'),(274878,'marytan@gmail.com','MarySinceBirthButStillSingle','L1Uz7HI3E.BoX1lg6NzWceS2iHWklid3D0cdSLBIKeR6imXPeZ0hC','MarySinceBirthButStillSingle is too lazy to add a status','2000-08-10'),(283287,'sitisarah@lorem-ipsum.com','CoffeeGirl','R8bbir1PaD7q5DILiFkHtOC/DFfOgFBobknVI8PxCzRY4CRoMUJNa','CoffeeGirl is too lazy to add a status','2002-02-14'),(437954,'kojialing@lorem-ipsum.com','Kobot','dbaIhnhxhH/ubxDuwwEq/.LQn0Wt3qikMs4mtyRUndFsJiWlqROCe','Kobot is too lazy to add a status','2003-01-01'),(621235,'hansolo02@live.com','hanbaobao','eBymQcG3FonwnAqKHUuhNuTwm9R6rox17/pMn/7S/5MSw.BFAOe6e','hanbaobao is too lazy to add a status','1998-01-30'),(734752,'muhammad@lorem-ipsum.com','Mehxa','hV33ghtwfoIeVOajlcGBIOUzvYR/mwkaJ61epPTlId50wnx3caNeu','Mehxa is too lazy to add a status','2002-03-15'),(823585,'ameliajeff0206@yahoo.com','iamjeff','EZjbWWvlrsCOKnYQqLXjqOlt1cxHkzBF8OIil5So6WhrIsSqzal6O','iamjeff is too lazy to add a status','1997-11-10'),(927312,'john2004@gmail.com','johnnyjohnny','o3UZqnRtOvyvnBGT33mNRuLkkWd8Fi1TWvpELAevnVTRX1tcRvmh2','johnnyjohnny is too lazy to add a status','1997-10-03');
+INSERT INTO `user` VALUES (102939,'jams@lorem-ipsum.com','NotABot','pLs9w6UwgX45NXhDa5Ea/.5P9Sykpc1p5QkQYK716UcclceNCWODO','NotABot is too lazy to add a status','0000-00-00',1,0),(193006,'coconutmak@gmail.com','theauthenticcoconut','J8NLbB5JoJwNE2dERDMWde0gv6VRubetdRMEqxKSV8IGs5YwZcWIq','theauthenticcoconut is too lazy to add a status','2001-02-28',1,0),(274878,'marytan@gmail.com','MarySinceBirthButStillSingle','L1Uz7HI3E.BoX1lg6NzWceS2iHWklid3D0cdSLBIKeR6imXPeZ0hC','MarySinceBirthButStillSingle is too lazy to add a status','2000-08-10',1,0),(283287,'sitisarah@lorem-ipsum.com','CoffeeGirl','R8bbir1PaD7q5DILiFkHtOC/DFfOgFBobknVI8PxCzRY4CRoMUJNa','CoffeeGirl is too lazy to add a status','2002-02-14',1,0),(437954,'kojialing@lorem-ipsum.com','Kobot','dbaIhnhxhH/ubxDuwwEq/.LQn0Wt3qikMs4mtyRUndFsJiWlqROCe','Kobot is too lazy to add a status','2003-01-01',1,0),(621235,'hansolo02@live.com','hanbaobao','eBymQcG3FonwnAqKHUuhNuTwm9R6rox17/pMn/7S/5MSw.BFAOe6e','hanbaobao is too lazy to add a status','1998-01-30',1,0),(734752,'muhammad@lorem-ipsum.com','Mehxa','hV33ghtwfoIeVOajlcGBIOUzvYR/mwkaJ61epPTlId50wnx3caNeu','Mehxa is too lazy to add a status','2002-03-15',1,0),(823585,'ameliajeff0206@yahoo.com','iamjeff','EZjbWWvlrsCOKnYQqLXjqOlt1cxHkzBF8OIil5So6WhrIsSqzal6O','iamjeff is too lazy to add a status','1997-11-10',1,0),(927312,'john2004@gmail.com','johnnyjohnny','o3UZqnRtOvyvnBGT33mNRuLkkWd8Fi1TWvpELAevnVTRX1tcRvmh2','johnnyjohnny is too lazy to add a status','1997-10-03',1,0);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -330,4 +332,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-07-29  0:08:55
+-- Dump completed on 2020-07-29  3:40:35

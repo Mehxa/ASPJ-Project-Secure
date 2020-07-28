@@ -348,55 +348,90 @@ def is_human(captcha_response):
     response_text = json.loads(response.text)
     return response_text['success']
 
+global invalid_login_count
+invalid_login_count = 0
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    print("reloaded")
+    attempted_users = []
+    global invalid_login_count
     sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
     global sessionID
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
-        sql = "SELECT UserID, Username, Password FROM user WHERE Username=%s"
+        sql = "SELECT UserID, Username, Password, Active, LoginAttempts FROM user WHERE Username=%s"
         val = (loginForm.username.data,)
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
         if findUser == None:
             loginForm.password.errors.append('Wrong email or password.')
             logfile.warn("Failed Login Attempt: User %s" %loginForm.username.data)
+            invalid_login_count += 1
+            print(invalid_login_count)
         else:
-            password = findUser["Password"]
-            password = "$2b$12$" + password
-            password = password.encode("utf8")
-            valid = bcrypt.check_password_hash(password, loginForm.password.data)
-            print(valid)
-            if not valid:
-                loginForm.password.errors.append('Wrong email or password.')
+            if findUser['Active'] == 0:
+                loginForm.password.errors.append('Your account has been locked')
             else:
-                captcha_response = request.form['g-recaptcha-response']
-                if is_human(captcha_response):
-                    print("human")
+                attempted_users.append(findUser["Username"])
+                password = findUser["Password"]
+                password = "$2b$12$" + password
+                password = password.encode("utf8")
+                valid = bcrypt.check_password_hash(password, loginForm.password.data)
+                print(valid)
+                if not valid:
+                    loginForm.password.errors.append('Wrong email or password.')
+                    sql = "UPDATE user"
+                    sql += " SET LoginAttempts=%s"
+                    sql += " WHERE Username=%s"
+                    val = ( findUser["LoginAttempts"] + 1,findUser["Username"])
+                    tupleCursor.execute(sql, val)
+                    db.commit()
+                    if findUser["LoginAttempts"] >= 6:
+                        sql = "UPDATE user"
+                        sql += " SET LoginAttempts=%s,"
+                        sql += " Active=%s"
+                        sql += " WHERE Username=%s"
+                        val = (str(0),str(0),findUser["Username"])
+                        tupleCursor.execute(sql, val)
+                        db.commit()
+                        loginForm.password.errors.append("Your account has been locked due to multiple failed login attempts. Check your email to reactivate your account.")
+                        #send email
                 else:
-                    print("U r a bot")
-                sessionInfo['login'] = True
-                sessionInfo['currentUserID'] = int(findUser['UserID'])
-                sessionInfo['username'] = findUser['Username']
-                sessionID += 1
-                sessionInfo['sessionID'] = sessionID
-                sessions[sessionID] = sessionInfo
-                sql = "SELECT * FROM admin WHERE UserID=%s"
-                val = (int(findUser['UserID']),)
-                dictCursor.execute(sql, val)
-                findAdmin = dictCursor.fetchone()
-                flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-                if findAdmin!=None:
-                    sessionInfo['isAdmin'] = True
-                    logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
-                    return redirect('/adminHome')
-                else:
-                    sessionInfo['isAdmin'] = False
-                    logfile.info("Successful User Login: User %s" %sessionInfo['username'])
+                    captcha_response = request.form['g-recaptcha-response']
+                    if is_human(captcha_response):
+                        print("human")
+                    else:
+                        print("U r a bot")
+                    sessionInfo['login'] = True
+                    sessionInfo['currentUserID'] = int(findUser['UserID'])
+                    sessionInfo['username'] = findUser['Username']
+                    sessionID += 1
+                    sessionInfo['sessionID'] = sessionID
+                    sessions[sessionID] = sessionInfo
+                    sql = "SELECT * FROM admin WHERE UserID=%s"
+                    val = (int(findUser['UserID']),)
+                    dictCursor.execute(sql, val)
+                    findAdmin = dictCursor.fetchone()
+                    invalid_login_count = 0
+                    sql = "UPDATE user"
+                    sql += " SET LoginAttempts=%s"
+                    sql += " WHERE Username in %s"
+                    val = (str(0), '('+ ', '.join(attempted_users)+')')
+                    tupleCursor.execute(sql, val)
+                    db.commit()
+                    attempted_users = []
+                    flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
+                    if findAdmin!=None:
+                        sessionInfo['isAdmin'] = True
+                        logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
+                        return redirect('/adminHome')
+                    else:
+                        sessionInfo['isAdmin'] = False
+                        logfile.info("Successful User Login: User %s" %sessionInfo['username'])
 
-                return redirect('/home') # Change this later to redirect to profile page
+                    return redirect('/home') # Change this later to redirect to profile page
 
-    return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey)
+    return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey, invalid_login_count=invalid_login_count)
 
 @app.route('/logout')
 @login_required

@@ -13,7 +13,7 @@ import asyncio
 from threading import Thread
 import flask_monitoringdashboard as dashboard
 import requests
-import logging
+import logging, logging.config, yaml
 
 
 db = mysql.connector.connect(
@@ -29,10 +29,8 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-logging.basicConfig(filename='log.log'
-                    , level=logging.CRITICAL
-                    , format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s'
-                    )
+logging.config.dictConfig(yaml.load(open('logging.conf')))
+logfile = logging.getLogger('file')
 
 dashboard.config.init_from(file='config.cfg')
 dashboard.bind(app)
@@ -66,7 +64,7 @@ sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
 # Password: NotABot123
 # sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
 # Password: CoffeeGirl123
-sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
+# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
 # Password: Mehxa123
 # sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
 # Password: Kobot123
@@ -372,6 +370,7 @@ def login():
             print("U r a bot")
         if findUser==None or not valid:
             loginForm.password.errors.append('Wrong email or password.')
+            logfile.warn("Failed Login Attempt: User %s" %loginForm.username.data)
         else:
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser['UserID'])
@@ -386,9 +385,11 @@ def login():
             flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             if findAdmin!=None:
                 sessionInfo['isAdmin'] = True
+                logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
                 return redirect('/adminHome')
             else:
                 sessionInfo['isAdmin'] = False
+                logfile.info("Successful User Login: User %s" %sessionInfo['username'])
 
             return redirect('/home') # Change this later to redirect to profile page
 
@@ -824,22 +825,26 @@ def download(path):
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
+    logfile.warn("Error 401: Unauthorized Access to Admin Page")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(403)
 def error403(e):
     msg = 'Erorr 403: Forbidden'
+    logfile.warn("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(404)
 def error404(e):
     msg = 'Oops! Page not found. Head back to the home page'
+    logfile.error("Error 404: Page not found")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(500)
 def error500(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    logfile.error("Error 500: Internal Server Error")
     return render_template('error.html', msg=msg)
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=False)

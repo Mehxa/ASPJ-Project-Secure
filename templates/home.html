@@ -65,7 +65,7 @@
 
       {% for post in recentPosts %}
         <div class="post-preview my-3">
-          <a href="/viewPost/{{ post.PostID }}">
+          <a href="/viewPost/{{ post.PostID }}/{{sessionID}}">
             <h1 class="post-title">
               {{ post.Title }}
             </h1>

@@ -29,7 +29,7 @@ CREATE TABLE `admin` (
   UNIQUE KEY `AdminID_UNIQUE` (`AdminID`),
   KEY `fk_admin_UserID_idx` (`UserID`),
   CONSTRAINT `fk_admin_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -62,9 +62,9 @@ CREATE TABLE `comment` (
   UNIQUE KEY `CommentID_UNIQUE` (`CommentID`),
   KEY `fk_comment_UserID_idx` (`UserID`),
   KEY `fk_comment_PostID_idx` (`PostID`),
-  CONSTRAINT `fk_comment_PostID` FOREIGN KEY (`PostID`) REFERENCES `post` (`PostID`),
-  CONSTRAINT `fk_comment_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_comment_PostID` FOREIGN KEY (`PostID`) REFERENCES `post` (`PostID`) ON DELETE CASCADE,
+  CONSTRAINT `fk_comment_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -90,9 +90,9 @@ CREATE TABLE `comment_votes` (
   `Vote` tinyint NOT NULL,
   PRIMARY KEY (`UserID`,`CommentID`),
   KEY `fk_comment_votes_CommentID_idx` (`CommentID`),
-  CONSTRAINT `fk_coment_votes_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`),
-  CONSTRAINT `fk_comment_votes_CommentID` FOREIGN KEY (`CommentID`) REFERENCES `comment` (`CommentID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_coment_votes_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE,
+  CONSTRAINT `fk_comment_votes_CommentID` FOREIGN KEY (`CommentID`) REFERENCES `comment` (`CommentID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -121,8 +121,8 @@ CREATE TABLE `feedback` (
   UNIQUE KEY `FeedbackID_UNIQUE` (`FeedbackID`),
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   KEY `fk_feedback_UserID_idx` (`UserID`),
-  CONSTRAINT `fk_feedback_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_feedback_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -131,6 +131,7 @@ CREATE TABLE `feedback` (
 
 LOCK TABLES `feedback` WRITE;
 /*!40000 ALTER TABLE `feedback` DISABLE KEYS */;
+INSERT INTO `feedback` VALUES (1,9,'ZAP','XhZKfdujvPjYPGdaOMdybehjWbfuvkKrFmectyYRuMibWyuLiAxYXWexxkHjXWhRmmsNoptIgMcTqBwKkqlVyciPwBYfwOedYIoUSdjKSrKHlZgsqhxCWRtMnYgaGCCUaccwxTPVhoFXOKZFvwbkUMExHHoESuaZWSvxIjdHvEKdFAXyulkJOdvwPbWxjZjrtAVXDwvyPImNSSPWdOMUjnwZoFrNrfcrlZDOdKUoZcUtUCZRvWVwIweDwDhlRQplDFrXiZCfRNtCJActGtUTKNIFEYAsVNPbdrZwqvpEgPiGResABaCScIClXdpuVrmsNQAeJyKlSgGZHrinuWLqhtapGWIZvmYTcDSSOBWbTfAJOWVOrgoNCpPEqrRNHaIrlmDUEgtOZokXFFbtbXHifROLeqUrZNJMpaHOEKlHmCcQgExopyHxVhKCYgxiPliDibrCVdFvDgWHdtHESFAhdCTmuRtmbuQlODKgxVbndoOjdtMIXLuyJWvioBvOUMoYXRRYhgXMhOfjbZLKETQJFtYGYYkcfkyXGmXyxbwWZuOUmuZejYMwtMEvCgJoSXseTxGnjwEYOEFiVQZPQDBhBwWRZoknXZSsWSCiDOcAwWTyDgylAhBsLdDRCGdiiANyKAtUHFHBLQNejjsZeCfuHxSfAHJbeKOsexnaUhhIQpqplsFgKLAKGKTXcyOcHmvNqMbHAqbmIhKmbVUNQFfcqFaFMEiaTwtcNCTNpeuCpBqKgNkbYGfOZtYotPZfedeVkXfseFWRddjiRBCNPSLMkkaglxQWopsjbLtRDnwMNNpkovtHFchOijwbbaxJkjDywMKicHuLedXTYCqadEyxOIcxPRnkAhGLDTAHkGyEQKihPDBkIoLDZZikeEveinobqgCBNTBMFZqnyjNciavWSopbZWDkupYCdnMHmruwVhhqssnMvVLEGhuogWLIBduMFcMgOngZImRLWRjVgjvDQhnRRvnuWBsSSgwQLFinxQySFJxjvdsWxCMfDVHnsQKceWshXFfxUoXwLxdHaHZnWrenOeutKCZvRAHGWNlNRKUyrHwDSwHAoEGqUAbikMuAVkhPEWyZgSCPJVNRwvntfWxDvgGitVUTTwwArynPsyJXfVeLCBiZaTBRXISqGaDUPBkVbtkWDQZnydCTxJvIQHMQVpUEDFSdjtZDeBTFNTFlHVswtGxnxMGIKlIQUEsAPcqrdutEEmhydmJbGYkUBHZZpWxbHqVTAvpauuiyuSkIqKMIILWpWdrNkNomWuYjfREYmPdlFnAIWdPeZPoRoeSQwtwHDZeWptVygeoSiJnLCDIOGTGxesTNtGCjFghRPrVdswBdmYrawEacKkyljbptKDrofNhAKRdaIeHJZrIvtsjwRDpaipreEXqsooDZnNXveJmtQmURAAjXUReMtTjHEkPsNgDQroUGrOFqdJSHsEfTKVhdpahIsaZDyiNsFjWsZvDxupJqQnQDBemlKihyXAJBLDtZRvpOKsjAXPJGxwGUOguvNUlLmdwCDQpiSJGYdGFKoQcdHddWmQHddfLVGeaQgEmNiouoXoDrXRWcaTsTrOYcthtNgZrKeghwHgxqQrNpXeaweYlrRQRcEgTvIJHysEedoliAmeDIeIfuYxJaPLUFAESGljEptXaGWFaBNCOHAQtAcriwFwtYhxmfVpGkOnkarViPlNNPTGMKBfiDXMegXgcfWADRpEHCGXkrbfWWrOXBKbnNQgtmqvfOrUPqpCCGiEORmZEeTgPSqGlWFNANpSGMsXsCwuaQcgaLgVnQFMiFLYnIUEwgPgPnooRDyhZNmpIXDwXNpiPHAiTeqdetKbLLywlxQHirTChMeIomIjokqCpXncqkuSLWTHOGVELZmPbroKZshvxYGtpYjebgyMkoYQpmyqTOcZjpjBkBFHqJSHMIYOxtudIEEbsyQIqVkegCuBSjHZXQyAssCiUhZWLDlJbugTdfiXyBQEkMSjvqELIEYbrmSZFCbSvyRNrjtdRsKKobcbPkYdTJuebirKIyXcZKectcawmpVUANhwjCGFJoMecMnlWfJqvfJWOQgByNEVojDZZZvZfWHwZZ','2020-07-06 12:47:12'),(2,9,'ZAP','ZAP','2020-07-06 12:47:18'),(5,9,'ZAP','Set-cookie: Tamper=703ef080-3556-4337-8239-338b08f9807d','2020-07-06 12:47:24'),(11,9,'ZAP','@','2020-07-06 12:48:13');
 /*!40000 ALTER TABLE `feedback` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -155,9 +156,9 @@ CREATE TABLE `post` (
   UNIQUE KEY `PostID_UNIQUE` (`PostID`),
   KEY `fk_post_TopicID_idx` (`TopicID`),
   KEY `fk_post_UserID_idx` (`UserID`),
-  CONSTRAINT `fk_post_TopicID` FOREIGN KEY (`TopicID`) REFERENCES `topic` (`TopicID`),
-  CONSTRAINT `fk_post_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_post_TopicID` FOREIGN KEY (`TopicID`) REFERENCES `topic` (`TopicID`) ON DELETE CASCADE,
+  CONSTRAINT `fk_post_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -183,9 +184,9 @@ CREATE TABLE `post_votes` (
   `Vote` tinyint NOT NULL,
   PRIMARY KEY (`UserID`,`PostID`),
   KEY `fk_post_votes_PostID_idx` (`PostID`),
-  CONSTRAINT `fk_post_votes_PostID` FOREIGN KEY (`PostID`) REFERENCES `post` (`PostID`),
-  CONSTRAINT `fk_post_votes_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_post_votes_PostID` FOREIGN KEY (`PostID`) REFERENCES `post` (`PostID`) ON DELETE CASCADE,
+  CONSTRAINT `fk_post_votes_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -213,9 +214,9 @@ CREATE TABLE `reply` (
   PRIMARY KEY (`ReplyID`),
   KEY `fk_reply_CommentID_idx` (`CommentID`),
   KEY `fk_reply_UserID_idx` (`UserID`),
-  CONSTRAINT `fk_reply_CommentID` FOREIGN KEY (`CommentID`) REFERENCES `comment` (`CommentID`),
-  CONSTRAINT `fk_reply_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_reply_CommentID` FOREIGN KEY (`CommentID`) REFERENCES `comment` (`CommentID`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reply_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -244,8 +245,8 @@ CREATE TABLE `topic` (
   UNIQUE KEY `TopicID_UNIQUE` (`TopicID`),
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   KEY `fk_topic_UserID_idx` (`UserID`),
-  CONSTRAINT `fk_topic_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4;
+  CONSTRAINT `fk_topic_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -269,7 +270,7 @@ CREATE TABLE `user` (
   `UserID` tinyint NOT NULL AUTO_INCREMENT,
   `Email` varchar(50) NOT NULL,
   `Username` varchar(30) NOT NULL,
-  `Password` varchar(50) NOT NULL,
+  `Password` varchar(60) NOT NULL,
   `Status` tinytext,
   `Birthday` date NOT NULL,
   PRIMARY KEY (`UserID`),
@@ -277,7 +278,7 @@ CREATE TABLE `user` (
   UNIQUE KEY `Email_UNIQUE` (`Email`),
   UNIQUE KEY `Username_UNIQUE` (`Username`),
   UNIQUE KEY `Password_UNIQUE` (`Password`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -286,7 +287,7 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (1,'jams@lorem-ipsum.com','NotABot','NotABot123',NULL,'0000-00-00'),(2,'sitisarah@lorem-ipsum.com','CoffeeGirl','CoffeeGirl123',NULL,'2002-02-14'),(3,'muhammad@lorem-ipsum.com','Mexha','Mexha123',NULL,'2002-03-15'),(4,'kojialing@lorem-ipsum.com','Kobot','Kobot123',NULL,'2003-01-01'),(5,'marytan@gmail.com','MarySinceBirthButStillSingle','MaryTan123',NULL,'2000-08-10'),(6,'coconutmak@gmail.com','theauthenticcoconut','nuts@coco',NULL,'2001-02-28'),(7,'john2004@gmail.com','johnnyjohnny','hohohomerrychristmas',NULL,'1997-10-03'),(8,'ameliajeff0206@yahoo.com','iamjeff','iaminevitable',NULL,'1997-11-10'),(9,'hansolo02@live.com','hanbaobao','burgerking02',NULL,'1998-01-30');
+INSERT INTO `user` VALUES (1,'jams@lorem-ipsum.com','NotABot','pLs9w6UwgX45NXhDa5Ea/.5P9Sykpc1p5QkQYK716UcclceNCWODO','NotABot is too lazy to add a status','0000-00-00'),(2,'sitisarah@lorem-ipsum.com','CoffeeGirl','R8bbir1PaD7q5DILiFkHtOC/DFfOgFBobknVI8PxCzRY4CRoMUJNa','CoffeeGirl is too lazy to add a status','2002-02-14'),(3,'muhammad@lorem-ipsum.com','Mehxa','hV33ghtwfoIeVOajlcGBIOUzvYR/mwkaJ61epPTlId50wnx3caNeu','Mehxa is too lazy to add a status','2002-03-15'),(4,'kojialing@lorem-ipsum.com','Kobot','dbaIhnhxhH/ubxDuwwEq/.LQn0Wt3qikMs4mtyRUndFsJiWlqROCe','Kobot is too lazy to add a status','2003-01-01'),(5,'marytan@gmail.com','MarySinceBirthButStillSingle','L1Uz7HI3E.BoX1lg6NzWceS2iHWklid3D0cdSLBIKeR6imXPeZ0hC','MarySinceBirthButStillSingle is too lazy to add a status','2000-08-10'),(6,'coconutmak@gmail.com','theauthenticcoconut','J8NLbB5JoJwNE2dERDMWde0gv6VRubetdRMEqxKSV8IGs5YwZcWIq','theauthenticcoconut is too lazy to add a status','2001-02-28'),(7,'john2004@gmail.com','johnnyjohnny','o3UZqnRtOvyvnBGT33mNRuLkkWd8Fi1TWvpELAevnVTRX1tcRvmh2','johnnyjohnny is too lazy to add a status','1997-10-03'),(8,'ameliajeff0206@yahoo.com','iamjeff','EZjbWWvlrsCOKnYQqLXjqOlt1cxHkzBF8OIil5So6WhrIsSqzal6O','iamjeff is too lazy to add a status','1997-11-10'),(9,'hansolo02@live.com','hanbaobao','eBymQcG3FonwnAqKHUuhNuTwm9R6rox17/pMn/7S/5MSw.BFAOe6e','hanbaobao is too lazy to add a status','1998-01-30');
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -299,4 +300,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-06-24 17:30:47
+-- Dump completed on 2020-07-28 15:11:08

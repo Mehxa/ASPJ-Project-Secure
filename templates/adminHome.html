@@ -72,13 +72,13 @@
           <span class="post-meta">Posted by <a href="adminProfile/{{post.Username}}">{{ post.Username }}</a> on {{ post.DatetimePosted }} | <a href="/adminIndivTopic/{{post.TopicID}}">{{ post.Topic }}</a></span>
 
           <span class="post-votes ml-auto float-right">
-            <a href="#" data-toggle="modal" data-target="#DeletePostModal"><i class="fa fa-trash" aria-hidden="true"></i></a>
+            <a href="#" data-toggle="modal" data-target="#DeletePostModal{{post.PostID}}"><i class="fa fa-trash" aria-hidden="true"></i></a>
             <a href="#"><i class="fa fa-arrow-up"></i></a>
             <span id="postTotalVotes">{{ post.TotalVotes }}</span>
             <a href="#"><i class="fa fa-arrow-down"></i></a>
           </span> <!--Votes-->
         </div> <!--Post-->
-        <div id="DeletePostModal" class="modal fade" role="dialog">
+        <div id="DeletePostModal{{post.PostID}}" class="modal fade" role="dialog">
           <div class="modal-dialog">
 
             <!-- Modal content-->
@@ -91,9 +91,7 @@
                 <p>Delete {{ post.Username }}'s post? </p>
               </div>
               <div class="modal-footer">
-                <form method = "POST" action="/adminDeletePost/{{post.PostID}}">
-                <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
+                <a href="/adminDeletePost/{{post.PostID}}">Delete</a>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
               </div>
             </div>

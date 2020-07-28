@@ -13,6 +13,7 @@ import asyncio
 from threading import Thread
 import flask_monitoringdashboard as dashboard
 import requests
+import logging
 
 
 db = mysql.connector.connect(
@@ -28,6 +29,11 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
+logging.basicConfig(filename='log.log'
+                    , level=logging.CRITICAL
+                    , format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s'
+                    )
+
 dashboard.config.init_from(file='config.cfg')
 dashboard.bind(app)
 app.config.update(
@@ -94,10 +100,13 @@ def login_required(function_to_wrap):
 def admin_required(function_to_wrap):
     @wraps(function_to_wrap)
     def wrap(*args, **kwargs):
-        if sessionInfo['isAdmin']==1:
-            return function_to_wrap(*args, **kwargs)
+        if sessionInfo['login']:
+            if sessionInfo['isAdmin']==1:
+                return function_to_wrap(*args, **kwargs)
+            else:
+                abort(403)
         else:
-            abort(404)
+            abort(401)
     return wrap
 
 def get_all_topics(option):
@@ -543,7 +552,6 @@ def indivTopic(topicID, sessionId):
     return render_template('indivTopic.html', currentPage='indivTopic', **sessionInfo, recentPosts=recentPosts, topic = topic[0])
 
 @app.route('/adminProfile/<username>', methods=["GET", "POST"])
-@login_required
 @admin_required
 def adminUserProfile(username):
     sessionInfo = sessions[sessionID]
@@ -575,7 +583,6 @@ def adminUserProfile(username):
 
 
 @app.route('/adminHome', methods=["GET", "POST"])
-@login_required
 @admin_required
 def adminHome():
     sessionInfo = sessions[sessionID]
@@ -598,7 +605,6 @@ def adminHome():
     return render_template('adminHome.html', currentPage='adminHome', **sessionInfo, searchBarForm = searchBarForm,recentPosts = recentPosts)
 
 @app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
-@login_required
 @admin_required
 def adminViewPost(postID):
     sessionInfo = sessions[sessionID]
@@ -629,7 +635,6 @@ def adminViewPost(postID):
     return render_template('adminViewPost.html', currentPage='adminViewPost', **sessionInfo, post = post, commentList = commentList)
 
 @app.route('/adminTopics')
-@login_required
 @admin_required
 def adminTopics():
     # uncomment from here
@@ -640,7 +645,6 @@ def adminTopics():
     return render_template('adminTopics.html', currentPage='adminTopics', **sessionInfo, listOfTopics=listOfTopics)
 
 @app.route('/adminIndivTopic/<topicID>', methods=["GET", "POST"])
-@login_required
 @admin_required
 def adminIndivTopic(topicID):
     sessionInfo = sessions[sessionID]
@@ -661,7 +665,6 @@ def adminIndivTopic(topicID):
     return render_template('adminIndivTopic.html', currentPage='adminIndivTopic', **sessionInfo, recentPosts=recentPosts, topic=topic[0])
 
 @app.route('/addTopic', methods=["GET", "POST"])
-@login_required
 @admin_required
 def addTopic():
     sessionInfo = sessions[sessionID]
@@ -691,7 +694,6 @@ def addTopic():
     return render_template('addTopic.html', currentPage='addTopic', **sessionInfo, topicForm=topicForm)
 
 @app.route('/adminUsers')
-@login_required
 @admin_required
 def adminUsers():
     sessionInfo = sessions[sessionID]
@@ -702,7 +704,6 @@ def adminUsers():
     return render_template('adminUsers.html', currentPage='adminUsers', **sessionInfo, listOfUsernames = listOfUsernames)
 
 @app.route('/adminDeleteUser/<username>', methods=['POST'])
-@login_required
 @admin_required
 def deleteUser(username):
     user_email = "SELECT Email FROM user WHERE user.username=%s"
@@ -711,6 +712,7 @@ def deleteUser(username):
     sql = "DELETE FROM user WHERE user.username=%s"
     val = (username,)
     tupleCursor.execute(sql, val)
+    db.commit()
     try:
         msg = Message("Lorem Ipsum",
             sender="deloremipsumonlinestore@outlook.com",
@@ -726,8 +728,7 @@ def deleteUser(username):
 
     return redirect('/adminUsers')
 
-@app.route('/adminDeletePost/<postID>', methods=['POST'])
-@login_required
+@app.route('/adminDeletePost/<int:postID>', methods=['POST', 'GET'])
 @admin_required
 def deletePost(postID):
     sql = "SELECT post.Content, post.DatetimePosted, post.postID, user.Username, user.email "
@@ -738,27 +739,28 @@ def deletePost(postID):
     dictCursor.execute(sql, val)
     email_info = dictCursor.fetchall()
     print(email_info)
+
     sql = "DELETE FROM post WHERE post.PostID=%s"
     val = (postID,)
-    tupleCursor.execute(sql, val)
-    try:
-        msg = Message("Lorem Ipsum",
-            sender="deloremipsumonlinestore@outlook.com",
-            recipients=[email_info[0]['email']])
-        msg.body = "Your post has been deleted"
-        for info in email_info:
-            msg.html = render_template('email.html', postID=postID, username=info['Username'], content=info['Content'], posted=info['DatetimePosted'])
-            mail.send(msg)
-        print("\n\n\nMAIL SENT\n\n\n")
-    except Exception as e:
-        print(e)
-        print("Error:", sys.exc_info()[0])
-        print("goes into except")
+    dictCursor.execute(sql, val)
+    db.commit()
+    # try:
+    #     msg = Message("Lorem Ipsum",
+    #         sender="deloremipsumonlinestore@outlook.com",
+    #         recipients=[email_info[0]['email']])
+    #     msg.body = "Your post has been deleted"
+    #     for info in email_info:
+    #         msg.html = render_template('email.html', postID=postID, username=info['Username'], content=info['Content'], posted=info['DatetimePosted'])
+    #         mail.send(msg)
+    #     print("\n\n\nMAIL SENT\n\n\n")
+    # except Exception as e:
+    #     print(e)
+    #     print("Error:", sys.exc_info()[0])
+    #     print("goes into except")
 
     return redirect('/adminHome')
 
 @app.route('/adminFeedback')
-@login_required
 @admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
@@ -771,7 +773,6 @@ def adminFeedback():
     return render_template('adminFeedback.html', currentPage='adminFeedback', **sessionInfo, feedbackList=feedbackList)
 
 @app.route('/replyFeedback/<feedbackID>',methods=["GET","POST"])
-@login_required
 @admin_required
 def replyFeedback(feedbackID):
     sessionInfo = sessions[sessionID]
@@ -805,7 +806,6 @@ def replyFeedback(feedbackID):
 
 
 @app.route('/adminFiles')
-@login_required
 @admin_required
 def list_files():
     files = []
@@ -817,10 +817,19 @@ def list_files():
     return render_template('adminFiles.html', files=files, **sessionInfo)
 
 @app.route('/adminFiles/<path:path>')
-@login_required
 @admin_required
 def download(path):
     return send_from_directory(directory=app.config['UPLOAD_FOLDER'], filename=path, as_attachment=True)
+
+@app.errorhandler(401)
+def error401(e):
+    msg = 'Erorr 401: Unauthorized'
+    return render_template('error.html', msg=msg)
+
+@app.errorhandler(403)
+def error403(e):
+    msg = 'Erorr 403: Forbidden'
+    return render_template('error.html', msg=msg)
 
 @app.errorhandler(404)
 def error404(e):
@@ -828,8 +837,9 @@ def error404(e):
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(500)
-def error404(e):
+def error500(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     return render_template('error.html', msg=msg)
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

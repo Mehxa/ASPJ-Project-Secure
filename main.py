@@ -420,14 +420,11 @@ def signUp():
             print("U r a bot")
         password_hash = bcrypt.generate_password_hash(signUpForm.password.data).decode("utf8")
         password_hash = password_hash[7:]
-        print(password_hash)
-        sql = "INSERT INTO user (Email, Username, Birthday, Password) VALUES"
-        sql += " ('" + signUpForm.email.data + "'"
-        sql += " , '" + signUpForm.username.data + "'"
-        sql += " , '" + str(signUpForm.dob.data) + "'"
-        sql += " , '" + password_hash + "')"
+
         try:
-            tupleCursor.execute(sql)
+            sql = "INSERT INTO user (UserID, Email, Username, Birthday, Password) VALUES (%s, %s, %s, %s, %s)"
+            val = (1, signUpForm.email.data, signUpForm.username.data, str(signUpForm.dob.data), password_hash)
+            tupleCursor.execute(sql, val)
             db.commit()
 
         except mysql.connector.errors.IntegrityError as errorMsg:
@@ -436,6 +433,7 @@ def signUp():
                 signUpForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
             elif 'username' in errorMsg.lower():
                 signUpForm.username.errors.append('This username is already taken.')
+            logfile.info("User account creation failure: Invalid email or username.")
 
         else:
             sql = "SELECT UserID, Username FROM user WHERE"
@@ -449,6 +447,7 @@ def signUp():
             sessionID += 1
             sessionInfo['sessionID'] = sessionID
             sessions[sessionID] = sessionInfo
+            logfile.info("User Account Created: User %s" %sessionInfo['username'])
             flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
             return redirect('/home')
 
@@ -825,13 +824,13 @@ def download(path):
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
-    logfile.warn("Error 401: Unauthorized Access to Admin Page")
+    logfile.warning("Error 401: Unauthorized Access to Admin Page")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(403)
 def error403(e):
     msg = 'Erorr 403: Forbidden'
-    logfile.warn("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
+    logfile.warning("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(404)

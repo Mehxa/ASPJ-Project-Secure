@@ -362,7 +362,6 @@ def login():
             loginForm.password.errors.append('Wrong email or password.')
             logfile.warn("Failed Login Attempt: User %s" %loginForm.username.data)
         else:
-<<<<<<< HEAD
             password = findUser["Password"]
             password = "$2b$12$" + password
             password = password.encode("utf8")
@@ -389,33 +388,13 @@ def login():
                 flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
                 if findAdmin!=None:
                     sessionInfo['isAdmin'] = True
+                    logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
                     return redirect('/adminHome')
                 else:
                     sessionInfo['isAdmin'] = False
+                    logfile.info("Successful User Login: User %s" %sessionInfo['username'])
 
                 return redirect('/home') # Change this later to redirect to profile page
-=======
-            sessionInfo['login'] = True
-            sessionInfo['currentUserID'] = int(findUser['UserID'])
-            sessionInfo['username'] = findUser['Username']
-            sessionID += 1
-            sessionInfo['sessionID'] = sessionID
-            sessions[sessionID] = sessionInfo
-            sql = "SELECT * FROM admin WHERE UserID=%s"
-            val = (int(findUser['UserID']),)
-            dictCursor.execute(sql, val)
-            findAdmin = dictCursor.fetchone()
-            flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-            if findAdmin!=None:
-                sessionInfo['isAdmin'] = True
-                logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
-                return redirect('/adminHome')
-            else:
-                sessionInfo['isAdmin'] = False
-                logfile.info("Successful User Login: User %s" %sessionInfo['username'])
-
-            return redirect('/home') # Change this later to redirect to profile page
->>>>>>> e3e6363405330782abe0ef2176ae8f0d13aceefc
 
     return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey)
 
@@ -853,8 +832,4 @@ def error500(e):
     return render_template('error.html', msg=msg)
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    app.run(debug=True)
-=======
     app.run(debug=False)
->>>>>>> e3e6363405330782abe0ef2176ae8f0d13aceefc

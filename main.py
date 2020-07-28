@@ -334,8 +334,8 @@ def feedback(sessionId):
 
     if request.method == 'POST' and feedbackForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-        sql = 'INSERT INTO feedback (UserID, Reason, Content, DateTimePosted) VALUES (%s, %s, %s, %s)'
-        val = (sessionInfo['currentUserID'], feedbackForm.reason.data, feedbackForm.comment.data, dateTime)
+        sql = 'INSERT INTO feedback (UserID, Reason, Content, DateTimePosted, Resolved) VALUES (%s, %s, %s, %s, %s)'
+        val = (sessionInfo['currentUserID'], feedbackForm.reason.data, feedbackForm.comment.data, dateTime, 0)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Feedback sent!', 'success')
@@ -767,6 +767,7 @@ def adminFeedback():
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
     sql += "FROM feedback"
     sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
+    sql += " WHERE feedback.Resolved = 0"
     dictCursor.execute(sql)
     feedbackList = dictCursor.fetchall()
     print(feedbackList)
@@ -779,8 +780,10 @@ def replyFeedback(feedbackID):
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
     sql += "FROM feedback"
     sql+= " INNER JOIN user ON feedback.UserID = user.UserID"
-    sql += " WHERE feedback.FeedbackID = " + str(feedbackID)
-    dictCursor.execute(sql)
+    sql += " WHERE feedback.FeedbackID = %s"
+    # sql += " AND feedback.Resolved = 0"
+    val = (str(feedbackID),)
+    dictCursor.execute(sql, val)
     feedbackList = dictCursor.fetchall()
     print(feedbackList)
     replyForm = Forms.ReplyFeedbackForm(request.form)
@@ -797,10 +800,22 @@ def replyFeedback(feedbackID):
             msg.html = render_template('email.html', postID="feedback reply", username=feedbackList[0]['Username'], content=feedbackList[0]['Content'], posted=feedbackList[0]['DatetimePosted'], reply=reply)
             mail.send(msg)
             print("\n\n\nMAIL SENT\n\n\n")
+            # sql = "UPDATE feedback "
+            # sql += "SET Resolved=1"
+            # sql += "WHERE FeedbackID = " +str(feedbackID)
+            # tupleCursor.execute(sql)
+            # db.commit()
+
         except Exception as e:
             print(e)
             print("Error:", sys.exc_info()[0])
             print("goes into except")
+        sql = "UPDATE feedback "
+        sql += " SET Resolved=1"
+        sql += " WHERE FeedbackID = %s"
+        val = (str(feedbackID),)
+        tupleCursor.execute(sql, val)
+        db.commit()
         return redirect('/adminFeedback')
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 

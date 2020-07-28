@@ -439,10 +439,9 @@ def signUp():
             logfile.info("User account creation failure: Invalid email or username.")
 
         else:
-            sql = "SELECT UserID, Username FROM user WHERE"
-            sql += " Username='" + signUpForm.username.data + "'"
-            sql += " AND Password='" + password_hash + "'"
-            tupleCursor.execute(sql)
+            sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
+            val = (signUpForm.username.data, password_hash)
+            tupleCursor.execute(sql, val)
             findUser = tupleCursor.fetchone()
             sessionInfo['login'] = True
             sessionInfo['currentUserID'] = int(findUser[0])
@@ -461,8 +460,9 @@ def profile(username, sessionId):
     # global sessionID
     sessionInfo = sessions[sessionID]
     updateEmailForm = Forms.UpdateEmail(request.form)
+    updateUsernameForm = Forms.UpdateUsername(request.form)
     updateStatusForm = Forms.UpdateStatus(request.form)
-    sql = "SELECT * FROM user WHERE user.Username=%s"
+    sql = "SELECT Username, Status FROM user WHERE user.Username=%s"
     val = (username,)
     dictCursor.execute(sql, val)
     userData = dictCursor.fetchone()
@@ -483,12 +483,8 @@ def profile(username, sessionId):
         post['Content'] = post['Content'][:200]
 
     if request.method == "POST" and updateEmailForm.validate():
-        # oldUsername = username
-        # oldUserID = sessionInfo['currentUserID']
-        # password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
-        # password = password_hash[7:]
         sql = "UPDATE user "
-        sql += "SET Email=%s,"
+        sql += "SET Email=%s"
         sql += "WHERE UserID=%s"
         try:
             val = (updateEmailForm.email.data, str(sessionInfo["currentUserID"]))
@@ -500,29 +496,58 @@ def profile(username, sessionId):
             if 'email' in errorMsg.lower():
                 updateEmailForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
                 flash("This email has already been linked to another account. Please use a different email.", "success")
-            elif 'username' in errorMsg.lower():
-                flash("This username is already taken!", "success")
-                updateEmailForm.username.errors.append('This username is already taken.')
         else:
-            sql = "SELECT UserID, Username FROM user WHERE user.Username=%s"
-            val = (updateProfileForm.username.data,)
-            tupleCursor.execute(sql, val)
-            findUser = tupleCursor.fetchone()
-            sessionInfo['login'] = True
-            sessionInfo['currentUserID'] = int(findUser[0])
-            sessionInfo['username'] = findUser[1]
-            sessions[sessionID] = sessionInfo
+            flash('Account successfully updated!', 'success')
 
-            if sessionInfo['currentUserID'] != oldUserID:
-                flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
-            else:
-                flash('Account successfully updated!', 'success')
+            return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
+
+    if request.method == "POST" and updateUsernameForm.validate():
+        # password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
+        # password = password_hash[7:]
+        sql = "UPDATE user "
+        sql += "SET Username=%s"
+        sql += "WHERE UserID=%s"
+        try:
+            val = (updateUsernameForm.username.data, str(sessionInfo["currentUserID"]))
+            tupleCursor.execute(sql, val)
+            db.commit()
+
+        except mysql.connector.errors.IntegrityError as errorMsg:
+            errorMsg = str(errorMsg)
+            if 'username' in errorMsg.lower():
+                flash("This username is already taken!", "success")
+                updateUsernameForm.username.errors.append('This username is already taken.')
+        else:
+            sql = "SELECT Username WHERE UserID=%s"
+            val = (str(sessionInfo["currentUserID"]),)
+            dictCursor.execute(sql, val)
+            db.commit()
+            sessionInfo['username'] = dictCursor['Username']
+            sessions[sessionID] = sessionInfo
+            flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
+            return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
+
+    if request.method == "POST" and updateStatusForm.validate():
+        sql = "UPDATE user "
+        sql += "SET Status=%s"
+        sql += "WHERE UserID=%s"
+        try:
+            val = (updateStatusForm.status.data, str(sessionInfo["currentUserID"]))
+            tupleCursor.execute(sql, val)
+            db.commit()
+
+        except mysql.connector.errors.IntegrityError as errorMsg:
+            errorMsg = str(errorMsg)
+            flash("An unexpected error has occurred!", "warning")
+        else:
+            flash('Account successfully updated!', 'success')
 
             return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
 
 
 
-    return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts, updateEmailForm=updateEmailForm)
+    return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts,
+    updateEmailForm=updateEmailForm, updateUsernameForm=updateUsernameForm, updateStatusForm=updateStatusForm)
 
 @app.route('/topics')
 def topics():

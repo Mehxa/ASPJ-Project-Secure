@@ -823,13 +823,15 @@ def error403(e):
 def error404(e):
     msg = 'Oops! Page not found. Head back to the home page'
     logfile.error("Error 404: Page not found")
-    return render_template('error.html', msg=msg)
+    admin = sessionInfo["isAdmin"]
+    return render_template('error.html', msg=msg, admin=admin)
 
 @app.errorhandler(500)
 def error500(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     logfile.error("Error 500: Internal Server Error")
-    return render_template('error.html', msg=msg)
+    admin = sessionInfo["isAdmin"]
+    return render_template('error.html', msg=msg, admin=admin)
 
 if __name__ == "__main__":
     app.run(debug=False)

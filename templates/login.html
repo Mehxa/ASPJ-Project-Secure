@@ -11,7 +11,10 @@
     </div>
     <div class="col-md-6">
       <h1>Login</h1>
+      {% if invalid_login_count > 5 %}
+      <h3>You have exceeded the maximum number of login attempts. Please exit the websiste and try again.</h3>
 
+      {%else%}
       <form method="POST" class="mt-4">
         <div class="form-group">
           {{render_field(loginForm.username, class= "form-control")}}
@@ -28,10 +31,55 @@
         <p>Don't have an account? <a href="/signup">Sign Up</a></p>
 
         <div class="form-group">
-          <input type="submit" class="btn btn-success">
+          <input type="submit" class="btn btn-success" id="submit">
         </div>
       </form>
+      {% endif %}
     </div> <!--Column-->
   </div> <!--Row-->
 </div> <!--Container-->
+{% endblock %}
+
+{% block scripts %}
+<!--
+onload, check invalid_login_count
+
+if ({{invalid_login_count == 3 }}){
+var enableSubmit = function(ele) {
+    $(ele).removeAttr("disabled");
+}
+
+$("#submit").click(function() {
+    var that = this;
+    $(this).attr("disabled", true);
+    setTimeout(function() { enableSubmit(that) }, 1000);
+});
+
+}
+ -->
+ <script>
+   var enableSubmit = function(ele) {
+       ele.removeAttribute("disabled");
+   }
+   var button = document.getElementById('submit')
+
+document.addEventListener('readystatechange', event => {
+  if (event.target.readyState === "complete") {
+    if ({{invalid_login_count}} == 3) {
+      button.setAttribute("disabled", true);
+      setTimeout(function() { enableSubmit(button) }, 10000);
+    }
+    else if ({{invalid_login_count}} == 4) {
+      button.setAttribute("disabled", true);
+      setTimeout(function() { enableSubmit(button) }, 15000);
+    }
+    else if ({{invalid_login_count}} == 5) {
+      button.setAttribute("disabled", true);
+      setTimeout(function() { enableSubmit(button) }, 15000);
+    };
+
+    }
+  });
+
+ </script>
 {% endblock %}

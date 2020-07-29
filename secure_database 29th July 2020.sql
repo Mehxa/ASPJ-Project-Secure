@@ -229,6 +229,33 @@ LOCK TABLES `post_votes` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `reactivate`
+--
+
+DROP TABLE IF EXISTS `reactivate`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `reactivate` (
+  `Secret` varchar(60) NOT NULL,
+  `DateIssued` datetime NOT NULL,
+  `ExpiryTime` time NOT NULL,
+  `UserID` int NOT NULL,
+  PRIMARY KEY (`Secret`),
+  KEY `fk_reactivate_UserID_idx` (`UserID`),
+  CONSTRAINT `fk_reactivate_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `reactivate`
+--
+
+LOCK TABLES `reactivate` WRITE;
+/*!40000 ALTER TABLE `reactivate` DISABLE KEYS */;
+/*!40000 ALTER TABLE `reactivate` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `reply`
 --
 
@@ -332,4 +359,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-07-29  3:40:35
+-- Dump completed on 2020-07-29 13:15:04

@@ -5,6 +5,7 @@ import Forms
 from datetime import datetime
 from functools import wraps
 import DatabaseManager
+import secrets
 # Flask mail
 import os
 from flask_mail import Mail, Message
@@ -40,7 +41,7 @@ app.config.update(
     MAIL_USE_TLS= True,
     MAIL_USE_SSL= False,
 	MAIL_USERNAME = 'deloremipsumonlinestore@outlook.com',
-	# MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
+	MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
 	MAIL_DEBUG = True,
 	MAIL_SUPPRESS_SEND = False,
     MAIL_ASCII_ATTACHMENTS = True,
@@ -415,8 +416,8 @@ def login():
                     invalid_login_count = 0
                     sql = "UPDATE user"
                     sql += " SET LoginAttempts=%s"
-                    sql += " WHERE Username in %s"
-                    val = (str(0), '('+ ', '.join(attempted_users)+')')
+                    sql += " WHERE Username = %s"
+                    val = (str(0), sessionInfo['username']) #Changed attempted users to Username
                     tupleCursor.execute(sql, val)
                     db.commit()
                     attempted_users = []
@@ -497,7 +498,7 @@ def profile(username, sessionId):
     updateEmailForm = Forms.UpdateEmail(request.form)
     updateUsernameForm = Forms.UpdateUsername(request.form)
     updateStatusForm = Forms.UpdateStatus(request.form)
-    sql = "SELECT Username, Status FROM user WHERE user.Username=%s"
+    sql = "SELECT Username, Status, Email FROM user WHERE user.Username=%s"
     val = (username,)
     dictCursor.execute(sql, val)
     userData = dictCursor.fetchone()
@@ -584,6 +585,48 @@ def profile(username, sessionId):
     return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts,
     updateEmailForm=updateEmailForm, updateUsernameForm=updateUsernameForm, updateStatusForm=updateStatusForm)
 
+@app.route('/changePassword/<username>', methods=["GET"])
+def changePassword(username):
+    url = secrets.token_urlsafe()
+    print(url)
+    sql = "INSERT INTO password_url(Url) VALUES(%s)"
+    val = (url,)
+    tupleCursor.execute(sql, val)
+    user_email = "SELECT Email FROM user WHERE user.username=%s"
+    val = (username,)
+    tupleCursor.execute(user_email, val)
+    user_email = tupleCursor.fetchone()
+    db.commit()
+    abs_url = "http://127.0.0.1:5000/reset/" + url
+    print(user_email)
+    try:
+        msg = Message("Lorem Ipsum",
+            sender="deloremipsumonlinestore@outlook.com",
+            recipients=[user_email[0]])
+        msg.body = "Password Change"
+        msg.html = render_template('email.html', postID="change password", username=username, content=abs_url, posted=0)
+        mail.send(msg)
+        print("\n\n\nMAIL SENT\n\n\n")
+    except Exception as e:
+        print(e)
+        print("Error:", sys.exc_info()[0])
+        print("goes into except")
+    else:
+        flash('A change password link has been sent to your email. Use it to update your password.', 'success')
+        flash('The password link will expire in 30 mins', 'warning')
+        return redirect('/profile/' + str(username))
+
+
+# @app.route('/reset/<url>', methods=["GET", "POST"])
+# def resetPassword(url):
+#     sql = "SELECT TIMEDIFF(Time_Created,) FROM password_url WHERE Url = %s"
+#     val = (url,)
+#     tupleCursor.execute(sql, val)
+#     reset = tupleCursor.fetchone()
+#     sql = ""
+
+
+
 @app.route('/topics')
 def topics():
     # uncomment from here
@@ -616,7 +659,10 @@ def indivTopic(topicID, sessionId):
 @admin_required
 def adminUserProfile(username):
     sessionInfo = sessions[sessionID]
-    sql = "SELECT * FROM user WHERE user.Username=%s"
+    updateEmailForm = Forms.UpdateEmail(request.form)
+    updateUsernameForm = Forms.UpdateUsername(request.form)
+    updateStatusForm = Forms.UpdateStatus(request.form)
+    sql = "SELECT Username, Status, Email FROM user WHERE user.Username=%s"
     val = (username,)
     dictCursor.execute(sql, val)
     userData = dictCursor.fetchone()
@@ -635,11 +681,80 @@ def adminUserProfile(username):
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         userData['Credibility'] += post['TotalVotes']
         post['Content'] = post['Content'][:200]
-    sql = "SELECT UserID, Username FROM user WHERE Username =%s"
+    sql = "SELECT AdminID FROM admin WHERE UserID=(SELECT UserID FROM user WHERE Username=%s)"
+    val = (username,)
     dictCursor.execute(sql, val)
     user = dictCursor.fetchone()
+    if user is not None:
+        admin = True
+    else:
+        admin = False
 
-    return render_template("adminProfile.html", currentPage = "myProfile", **sessionInfo, userData = userData, recentPosts = recentPosts, admin=False)
+    if request.method == "POST" and updateEmailForm.validate():
+        sql = "UPDATE user "
+        sql += "SET Email=%s"
+        sql += "WHERE UserID=%s"
+        try:
+            val = (updateEmailForm.email.data, str(sessionInfo["currentUserID"]))
+            tupleCursor.execute(sql, val)
+            db.commit()
+
+        except mysql.connector.errors.IntegrityError as errorMsg:
+            errorMsg = str(errorMsg)
+            if 'email' in errorMsg.lower():
+                updateEmailForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
+                flash("This email has already been linked to another account. Please use a different email.", "success")
+        else:
+            flash('Account successfully updated!', 'success')
+
+            return redirect('/adminProfile/' + sessionInfo['username'])
+
+    if request.method == "POST" and updateUsernameForm.validate():
+        # password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
+        # password = password_hash[7:]
+        sql = "UPDATE user "
+        sql += "SET Username=%s"
+        sql += "WHERE UserID=%s"
+        try:
+            val = (updateUsernameForm.username.data, str(sessionInfo["currentUserID"]))
+            tupleCursor.execute(sql, val)
+            db.commit()
+
+        except mysql.connector.errors.IntegrityError as errorMsg:
+            errorMsg = str(errorMsg)
+            if 'username' in errorMsg.lower():
+                flash("This username is already taken!", "success")
+                updateUsernameForm.username.errors.append('This username is already taken.')
+        else:
+            sql = "SELECT Username WHERE UserID=%s"
+            val = (str(sessionInfo["currentUserID"]),)
+            dictCursor.execute(sql, val)
+            db.commit()
+            sessionInfo['username'] = dictCursor['Username']
+            sessions[sessionID] = sessionInfo
+            flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
+            return redirect('/adminProfile/' + sessionInfo['username'])
+
+    if request.method == "POST" and updateStatusForm.validate():
+        sql = "UPDATE user "
+        sql += "SET Status=%s"
+        sql += "WHERE UserID=%s"
+        try:
+            val = (updateStatusForm.status.data, str(sessionInfo["currentUserID"]))
+            tupleCursor.execute(sql, val)
+            db.commit()
+
+        except mysql.connector.errors.IntegrityError as errorMsg:
+            errorMsg = str(errorMsg)
+            flash("An unexpected error has occurred!", "warning")
+        else:
+            flash('Account successfully updated!', 'success')
+
+            return redirect('/adminProfile/' + sessionInfo['username'])
+
+
+    return render_template("adminProfile.html", currentPage = "myProfile", **sessionInfo, userData = userData, recentPosts = recentPosts, admin=admin,
+    updateEmailForm=updateEmailForm, updateUsernameForm=updateUsernameForm, updateStatusForm=updateStatusForm)
 
 
 

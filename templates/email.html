@@ -8,6 +8,9 @@
   <p>{{reply}}<p>
   {%elif postID=="delete user"%}
   <p>Your account has been terminated</p>
+  {%elif postID=="change password"%}
+    <p>Click on this link to reset your password: <a href="{{content}}">{{content}}</a>
+    Do bear in mind that the password link will only be valid for 30 mins from the time request to change password</p>
   {%else%}
   <p>On {{posted}}, you made the folowing post:</p>
   <p>{{content}}</p>

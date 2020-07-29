@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block content %}
+{% from "includes/_formhelper.html" import render_field %}
 <div class="container my-4">
   <div class="col-md-5 profilebg mx-auto">
     <p class="profile-title my-3 text-center">{{userData['Username']}}'s Profile</p>
@@ -126,6 +127,108 @@
   </div>
   {% endif %}
   {% endif %}
+  <div id="UpdateModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Update</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <form method="POST" class="mt-4">
+            <button type="button" class="btn btn-warning w-100 mb-3" style="color:darkgreen;" data-toggle="modal" data-target="#UpdateEmailModal">Update Email</button>
+            <button type="button" class="btn btn-warning w-100 my-3" style="color:darkmagenta;" data-toggle="modal" data-target="#UpdateUsernameModal">Update Username</button>
+            <button type="button" class="btn btn-warning w-100 my-3" style="color:darkred;" data-toggle="modal" data-target="#UpdateStatusModal">Update Status</button>
+            <a class="btn btn-danger w-100 my-3" href="/changePassword/{{userData['Username']}}">Change Password</a>
+        </div>
+
+        <div class="modal-footer">
+          <div class="form-group">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div id="UpdateEmailModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Update</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form method="POST" class="mt-4">
+            <div class="form-group">
+              {{render_field(updateEmailForm.email, class= "form-control", value=userData['Email'])}}
+            </div>
+        </div>
+        <div class="modal-footer">
+          <div class="form-group">
+            <input type="submit" class="btn btn-success">
+          </div>
+        </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+  <div id="UpdateUsernameModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Update</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form method="POST" class="mt-4">
+            <div class="form-group">
+              {{render_field(updateUsernameForm.username, class= "form-control", value=userData['Username'])}}
+            </div>
+        </div>
+        <div class="modal-footer">
+          <div class="form-group">
+            <input type="submit" class="btn btn-success">
+          </div>
+        </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+  <div id="UpdateStatusModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Update</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form method="POST" class="mt-4">
+            <div class="form-group">
+              {{render_field(updateStatusForm.status, class= "form-control", value=userData['Status'])}}
+            </div>
+        </div>
+        <div class="modal-footer">
+          <div class="form-group">
+            <input type="submit" class="btn btn-success">
+          </div>
+        </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
 
 
 

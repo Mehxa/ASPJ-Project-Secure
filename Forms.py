@@ -35,12 +35,19 @@ class SignUpForm(Form):
     ])
     confirmPassword = PasswordField('Re-enter Password', [validators.DataRequired()])
 
-class UpdateForm(Form):
+class UpdateEmail(Form):
     email = StringField('Email Address', [validators.DataRequired(), validators.Regexp(r'^.+@[^.].*\.[a-z]{2,10}$', message="Invalid email address.")])
+
+class UpdateUsername(Form):
     username = StringField('Username', [validators.DataRequired()])
+
+class UpdateStatus(Form):
     status = StringField('Status')
+
+class UpdatePassword(Form):
     password = PasswordField('New Password', [
         validators.DataRequired(),
+        validators.Regexp(re.compile('^(?=\S{10,20}$)(?=.*?\d)(?=.*?[a-z])(?=.*?[A-Z])(?=.*?[^A-Za-z\s0-9])'), message= "Password must contain 10-20 characters, number, uppercase, lowercase, special character."),
         validators.EqualTo('confirmPassword', message='Passwords do not match.')
     ])
     confirmPassword = PasswordField('Re-enter Password', [validators.DataRequired()])

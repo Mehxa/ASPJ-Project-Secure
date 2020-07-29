@@ -30,6 +30,9 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
+app.logger.disabled = True
+log = logging.getLogger('werkzeug')
+log.disabled = True
 logging.config.dictConfig(yaml.load(open('logging.conf')))
 logfile = logging.getLogger('file')
 
@@ -944,6 +947,13 @@ def replyFeedback(feedbackID):
         return redirect('/adminFeedback')
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
+@app.route('/log')
+@admin_required
+def log():
+    logFile = open('application.log', 'r')
+    lines = logFile.read().splitlines()
+    logFile.close()
+    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=lines)
 
 @app.errorhandler(401)
 def error401(e):

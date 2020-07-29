@@ -617,13 +617,17 @@ def changePassword(username):
         return redirect('/profile/' + str(username))
 
 
-# @app.route('/reset/<url>', methods=["GET", "POST"])
-# def resetPassword(url):
-#     sql = "SELECT TIMEDIFF(Time_Created,) FROM password_url WHERE Url = %s"
-#     val = (url,)
-#     tupleCursor.execute(sql, val)
-#     reset = tupleCursor.fetchone()
-#     sql = ""
+@app.route('/reset/<url>', methods=["GET", "POST"])
+def resetPassword(url):
+    sql = "SELECT TIME_TO_SEC(TIMEDIFF(Time_Created, %s)) FROM password_url WHERE Url = %s"
+    val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),url)
+    tupleCursor.execute(sql, val)
+    reset = tupleCursor.fetchone()
+    if reset > 1800:
+        flash("Your password reset link has expired, please try again!", "error")
+        return redirect("/home")
+
+
 
 
 

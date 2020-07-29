@@ -15,6 +15,7 @@ from threading import Thread
 import flask_monitoringdashboard as dashboard
 import requests
 import logging, logging.config, yaml
+import secrets
 
 
 db = mysql.connector.connect(
@@ -30,6 +31,9 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
+app.logger.disabled = True
+log = logging.getLogger('werkzeug')
+log.disabled = True
 logging.config.dictConfig(yaml.load(open('logging.conf')))
 logfile = logging.getLogger('file')
 
@@ -354,13 +358,12 @@ invalid_login_count = 0
 @app.route('/login', methods=["GET", "POST"])
 def login():
     print("reloaded")
-    attempted_users = []
     global invalid_login_count
     sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
     global sessionID
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
-        sql = "SELECT UserID, Username, Password, Active, LoginAttempts FROM user WHERE Username=%s"
+        sql = "SELECT UserID, Username, Password, Active, LoginAttempts, Email FROM user WHERE Username=%s"
         val = (loginForm.username.data,)
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
@@ -370,10 +373,10 @@ def login():
             invalid_login_count += 1
             print(invalid_login_count)
         else:
+            secret = secrets.token_urlsafe(16)
             if findUser['Active'] == 0:
                 loginForm.password.errors.append('Your account has been locked')
             else:
-                attempted_users.append(findUser["Username"])
                 password = findUser["Password"]
                 password = "$2b$12$" + password
                 password = password.encode("utf8")
@@ -388,13 +391,43 @@ def login():
                     tupleCursor.execute(sql, val)
                     db.commit()
                     if findUser["LoginAttempts"] >= 6:
-                        sql = "UPDATE user"
-                        sql += " SET LoginAttempts=%s,"
-                        sql += " Active=%s"
-                        sql += " WHERE Username=%s"
-                        val = (str(0),str(0),findUser["Username"])
+                        # sql = "UPDATE user"
+                        # sql += " SET LoginAttempts=%s,"
+                        # sql += " Active=%s"
+                        # sql += " WHERE Username=%s"
+                        # val = (str(0),str(0),findUser["Username"])
+                        # tupleCursor.execute(sql, val)
+                        # db.commit()
+                        # secret = secrets.token_urlsafe(16)
+                        sql = "INSERT into reactivate"
+                        sql += " VALUES (%s,%s,%s,%s)"
+                        current = "SELECT NOW()"
+                        tupleCursor.execute(current)
+                        current = tupleCursor.fetchone()
+                        current=current[0]
+                        val = (secret, str(current), '168:00:00', findUser["UserID"])
                         tupleCursor.execute(sql, val)
                         db.commit()
+                        try:
+                            email = findUser["Email"]
+                            msg = Message("Lorem Ipsum",
+                                sender="deloremipsumonlinestore@outlook.com",
+                                recipients=[email])
+                            url = '/reactiveate/' + secret
+                            msg.body = "Your account has been locked"
+                            msg.html = render_template('email.html', postID="account locked", username=findUser['Username'], content=0, posted=0, reply=0, url=url)
+                            mail.send(msg)
+                            print("\n\n\nMAIL SENT\n\n\n")
+                            # sql = "UPDATE feedback "
+                            # sql += "SET Resolved=1"
+                            # sql += "WHERE FeedbackID = " +str(feedbackID)
+                            # tupleCursor.execute(sql)
+                            # db.commit()
+
+                        except Exception as e:
+                            print(e)
+                            print("Error:", sys.exc_info()[0])
+                            print("goes into except")
                         loginForm.password.errors.append("Your account has been locked due to multiple failed login attempts. Check your email to reactivate your account.")
                         #send email
                 else:
@@ -416,11 +449,15 @@ def login():
                     invalid_login_count = 0
                     sql = "UPDATE user"
                     sql += " SET LoginAttempts=%s"
+<<<<<<< HEAD
                     sql += " WHERE Username = %s"
                     val = (str(0), sessionInfo['username']) #Changed attempted users to Username
+=======
+                    sql += " WHERE Username=%s"
+                    val = (str(0), findUser['Username'])
+>>>>>>> 5785236815fe3a348a9366737442fddee31502ef
                     tupleCursor.execute(sql, val)
                     db.commit()
-                    attempted_users = []
                     flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
                     if findAdmin!=None:
                         sessionInfo['isAdmin'] = True
@@ -433,6 +470,41 @@ def login():
                     return redirect('/home') # Change this later to redirect to profile page
 
     return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey, invalid_login_count=invalid_login_count)
+
+@app.route('/reactivate/<secret>',methods=["GET", "POST"])
+def reactivate(secret):
+    if request.method == 'POST':
+        try:
+            sql = " SELECT * FROM reactivate"
+            sql += " WHERE Secret=%s"
+            val = (secret,)
+            tupleCursor.execute(sql,val)
+            findSecret = tupleCursor.fetchone()
+            sql = "SELECT HOUR(TIMEDIFF(%s,%s))"
+            current = "SELECT NOW()"
+            tupleCursor.execute(current)
+            current = tupleCursor.fetchone()
+            current=current[0]
+            val = (str(current), str(findSecret['DateIssued']))
+            tupleCursor.execute(sql,val)
+            timePassed = tupleCursor.fetchone()
+            if int(timePassed) > 168:
+                flash("This link has expired")
+                # return render_template('reactivate.html', resend)
+            else:
+                sql = "UPDATE user"
+                sql += " SET Active=%s"
+                sql += " ,LoginAttempts=%s"
+                sql += " WHERE UserID=("
+                sql += " SELECT UserID FROM reactivate"
+                sql += " WHERE reactivate.Secret=%s)"
+                val = (str(1),str(0),secret)
+                tupleCursor.exectue(sql,val)
+                db.commit()
+        except:
+            flash("Invalid link")
+
+    return render_template('reactivate.html')
 
 @app.route('/logout')
 @login_required
@@ -999,6 +1071,13 @@ def replyFeedback(feedbackID):
         return redirect('/adminFeedback')
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
+@app.route('/log')
+@admin_required
+def log():
+    logFile = open('application.log', 'r')
+    lines = logFile.read().splitlines()
+    logFile.close()
+    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=lines)
 
 @app.errorhandler(401)
 def error401(e):

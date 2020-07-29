@@ -1,0 +1,33 @@
+{% extends "adminBase.html" %}
+{% block title %}Log{% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="/static/styles/home.css">
+
+<style>
+  .logLine {
+    background-color: white;
+    padding: 2px;
+    margin: 2px 0px;
+  }
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container my-4">
+  <div class="row justify-content-center">
+    <div class="col-md-11">
+      <h1 class="mb-4">Log</h1>
+
+      {% for line in log %}
+        <div class="logLine">
+          {{line}}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

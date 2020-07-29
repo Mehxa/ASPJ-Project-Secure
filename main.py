@@ -449,13 +449,8 @@ def login():
                     invalid_login_count = 0
                     sql = "UPDATE user"
                     sql += " SET LoginAttempts=%s"
-<<<<<<< HEAD
-                    sql += " WHERE Username = %s"
-                    val = (str(0), sessionInfo['username']) #Changed attempted users to Username
-=======
                     sql += " WHERE Username=%s"
                     val = (str(0), findUser['Username'])
->>>>>>> 5785236815fe3a348a9366737442fddee31502ef
                     tupleCursor.execute(sql, val)
                     db.commit()
                     flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')

@@ -1127,11 +1127,7 @@ def after_request(response):
     response.headers.add('X-Content-Type-Options', 'nosniff')
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
-    
+
 if __name__ == "__main__":
-<<<<<<< HEAD
-    app.run(debug=True)
-=======
     app.run(debug=False)
     # app.run(debug=True)
->>>>>>> 1730971a12ee581aa77a73babaf8bcc48252c85e

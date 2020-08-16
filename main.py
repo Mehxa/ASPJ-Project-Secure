@@ -295,7 +295,7 @@ def viewPost(postID, sessionId):
 
     if request.method == 'POST' and commentForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-        sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
+        sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s)'
         val = (postID, commentForm.userID.data, commentForm.comment.data, dateTime, 0, 0)
         tupleCursor.execute(sql, val)
         db.commit()
@@ -930,8 +930,6 @@ def adminHome():
 @app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
 @admin_required
 def adminViewPost(postID):
-    sessionInfo = sessions[sessionID]
-
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted,post.TopicID,post.PostID, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
@@ -955,7 +953,30 @@ def adminViewPost(postID):
         replyList = dictCursor.fetchall()
         comment['ReplyList'] = replyList
 
-    return render_template('adminViewPost.html', currentPage='adminViewPost', **sessionInfo, post = post, commentList = commentList)
+    commentForm = Forms.CommentForm(request.form)
+    commentForm.userID.data = sessionInfo['currentUserID']
+    replyForm = Forms.ReplyForm(request.form)
+    replyForm.userID.data = sessionInfo['currentUserID']
+
+    if request.method == 'POST' and commentForm.validate():
+        dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+        sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s)'
+        val = (postID, commentForm.userID.data, commentForm.comment.data, dateTime, 0, 0)
+        tupleCursor.execute(sql, val)
+        db.commit()
+        flash('Comment posted!', 'success')
+        return redirect('/adminViewPost/%d' %(postID))
+
+    if request.method == 'POST' and replyForm.validate():
+        dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+        sql = 'INSERT INTO reply (UserID, CommentID, Content, DateTimePosted) VALUES (%s, %s, %s, %s)'
+        val = (replyForm.userID.data, replyForm.repliedID.data, replyForm.reply.data, dateTime)
+        tupleCursor.execute(sql, val)
+        db.commit()
+        flash('Comment posted!', 'success')
+        return redirect('/adminViewPost/%d' %(postID))
+
+    return render_template('adminViewPost.html', currentPage='adminViewPost', **sessionInfo, post = post, commentList = commentList, commentForm=commentForm, replyForm=replyForm)
 
 @app.route('/adminTopics')
 @admin_required

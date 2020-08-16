@@ -31,7 +31,7 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-app.logger.disabled = True
+# app.logger.disabled = True
 log = logging.getLogger('werkzeug')
 log.disabled = True
 logging.config.dictConfig(yaml.load(open('logging.conf')))
@@ -45,7 +45,7 @@ app.config.update(
     MAIL_USE_TLS= True,
     MAIL_USE_SSL= False,
 	MAIL_USERNAME = 'deloremipsumonlinestore@outlook.com',
-	MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
+	# MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
 	MAIL_DEBUG = True,
 	MAIL_SUPPRESS_SEND = False,
     MAIL_ASCII_ATTACHMENTS = True,
@@ -289,12 +289,14 @@ def viewPost(postID, sessionId):
         comment['ReplyList'] = replyList
 
     commentForm = Forms.CommentForm(request.form)
+    commentForm.userID.data = sessionInfo['currentUserID']
     replyForm = Forms.ReplyForm(request.form)
+    replyForm.userID.data = sessionInfo['currentUserID']
 
     if request.method == 'POST' and commentForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
         sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-        val = (postID, sessionInfo['currentUserID'], commentForm.comment.data, dateTime, 0, 0)
+        val = (postID, commentForm.userID.data, commentForm.comment.data, dateTime, 0, 0)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Comment posted!', 'success')
@@ -303,7 +305,7 @@ def viewPost(postID, sessionId):
     if request.method == 'POST' and replyForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
         sql = 'INSERT INTO reply (UserID, CommentID, Content, DateTimePosted) VALUES (%s, %s, %s, %s)'
-        val = (sessionInfo['currentUserID'], replyForm.repliedID.data, replyForm.reply.data, dateTime)
+        val = (replyForm.userID.data, replyForm.repliedID.data, replyForm.reply.data, dateTime)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Comment posted!', 'success')
@@ -321,11 +323,12 @@ def addPost(sessionId):
 
     postForm = Forms.PostForm(request.form)
     postForm.topic.choices = get_all_topics('default')
+    postForm.userID.data = sessionInfo['currentUserID']
 
     if request.method == 'POST' and postForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
         sql = 'INSERT INTO post (TopicID, UserID, DateTimePosted, Title, Content, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-        val = (postForm.topic.data, sessionInfo['currentUserID'], dateTime, postForm.title.data, postForm.content.data, 0, 0)
+        val = (postForm.topic.data, postForm.userID.data, dateTime, postForm.title.data, postForm.content.data, 0, 0)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Post successfully created!', 'success')
@@ -338,11 +341,12 @@ def addPost(sessionId):
 def feedback(sessionId):
     sessionInfo['prevPage']= request.url_rule
     feedbackForm = Forms.FeedbackForm(request.form)
+    feedbackForm.userID.data = sessionInfo['currentUserID']
 
     if request.method == 'POST' and feedbackForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
         sql = 'INSERT INTO feedback (UserID, Reason, Content, DateTimePosted, Resolved) VALUES (%s, %s, %s, %s, %s)'
-        val = (sessionInfo['currentUserID'], feedbackForm.reason.data, feedbackForm.comment.data, dateTime, 0)
+        val = (feedbackForm.userID.data, feedbackForm.reason.data, feedbackForm.comment.data, dateTime, 0)
         tupleCursor.execute(sql, val)
         db.commit()
         flash('Feedback sent!', 'success')

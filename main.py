@@ -260,6 +260,7 @@ def searchPosts():
     return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
 
 @app.route('/viewPost/<int:postID>/<sessionId>', methods=["GET", "POST"])
+@login_required
 def viewPost(postID, sessionId):
     sessionInfo['prevPage']= request.url_rule
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"

@@ -260,6 +260,7 @@ def searchPosts():
     return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
 
 @app.route('/viewPost/<int:postID>/<sessionId>', methods=["GET", "POST"])
+@login_required
 def viewPost(postID, sessionId):
     sessionInfo['prevPage']= request.url_rule
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
@@ -295,7 +296,7 @@ def viewPost(postID, sessionId):
 
     if request.method == 'POST' and commentForm.validate():
         dateTime = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-        sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s, %s)'
+        sql = 'INSERT INTO comment (PostID, UserID, Content, DateTimePosted, Upvotes, Downvotes) VALUES (%s, %s, %s, %s, %s, %s)'
         val = (postID, commentForm.userID.data, commentForm.comment.data, dateTime, 0, 0)
         tupleCursor.execute(sql, val)
         db.commit()

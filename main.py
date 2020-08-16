@@ -5,6 +5,7 @@ import Forms
 from datetime import datetime
 from functools import wraps
 import DatabaseManager
+import random
 # Flask mail
 import os
 from flask_mail import Mail, Message
@@ -515,64 +516,112 @@ def logout():
     sessions.pop(sessionID)
     return redirect('/home')
 
+temp_signup = {}
 @app.route('/signup', methods=["GET", "POST"])
 def signUp():
     sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
-    global sessionID
+    global temp_signup
     signUpForm = Forms.SignUpForm(request.form)
 
     if request.method == 'POST' and signUpForm.validate():
         captcha_response = request.form['g-recaptcha-response']
         if is_human(captcha_response):
             print("human")
-        else:
-            print("U r a bot")
-        password_hash = bcrypt.generate_password_hash(signUpForm.password.data).decode("utf8")
-        password_hash = password_hash[7:]
-
-        try:
-            sql = "INSERT INTO user (UserID, Email, Username, Birthday, Password) VALUES (%s, %s, %s, %s, %s)"
-            val = (1, signUpForm.email.data, signUpForm.username.data, str(signUpForm.dob.data), password_hash)
+            temp_details = {}
+            temp_details["Email"] = signUpForm.email.data
+            temp_details["Username"] = signUpForm.username.data
+            temp_details["Birthday"] = str(signUpForm.dob.data)
+            temp_details["Status"] = signUpForm.status.data
+            temp_details["Password"] = signUpForm.password.data
+            temp_details["Resend count"] = 0
+            OTP = random.randint(100000, 999999)
+            link = secrets.token_urlsafe()
+            temp_signup[link] = temp_details
+            sql = "INSERT INTO otp (link, otp) VALUES (%s, %s)"
+            val = (link, str(OTP))
             tupleCursor.execute(sql, val)
             db.commit()
-
-        except mysql.connector.errors.IntegrityError as errorMsg:
-            errorMsg = str(errorMsg)
-            if 'email' in errorMsg.lower():
-                signUpForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
-            elif 'username' in errorMsg.lower():
-                signUpForm.username.errors.append('This username is already taken.')
-            logfile.info("User account creation failure: Invalid email or username.")
+            print(temp_details["Email"])
+            try:
+                msg = Message("Lorem Ipsum",
+                    sender="deloremipsumonlinestore@outlook.com",
+                    recipients=[temp_details["Email"]])
+                msg.body = "OTP for Sign Up"
+                msg.html = render_template('otp_email.html', OTP=OTP, username=temp_details["Username"])
+                mail.send(msg)
+                print("\n\n\nMAIL SENT\n\n\n")
+            except Exception as e:
+                print(e)
+                print("Error:", sys.exc_info()[0])
+                print("goes into except")
+            else:
+                flash('Please enter the OTP that was sent to your email.', 'warning')
+                flash('The OTP will expire in 3 mins', 'warning')
+                return redirect('/login/' + str(link))
 
         else:
-            sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
-            val = (signUpForm.username.data, password_hash)
-            tupleCursor.execute(sql, val)
-            findUser = tupleCursor.fetchone()
-            sessionInfo['login'] = True
-            sessionInfo['currentUserID'] = int(findUser[0])
-            sessionInfo['username'] = findUser[1]
-            sessionID += 1
-            sessionInfo['sessionID'] = sessionID
-            sessions[sessionID] = sessionInfo
-            logfile.info("User Account Created: User %s" %sessionInfo['username'])
-            flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-            return redirect('/home')
+            print("U r a bot")
 
     return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm, sitekey=sitekey)
 
 @app.route('/login/<link>', methods=["GET", "POST"])
 def otp(link):
+    global sessionID
+    global temp_signup
     otpform = Forms.OTPForm(request.form)
     if request.method == "POST" and otpform.validate():
-        sql = "SELECT otp from otp WHERE link = %s"
-        val = (link,)
+        sql = "SELECT otp, TIME_TO_SEC(TIMEDIFF(%s, Time_Created)) from otp WHERE link = %s"
+        val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), link)
         tupleCursor.execute(sql, val)
         otp = tupleCursor.fetchone()
         if otp is None:
             flash('Wrong OTP entered. Please try again!')
+        elif otp[1] > 180:
+            flash('Your OTP has expired. Please resubmit the signup form')
+            temp_signup.pop(link)
+            sql = "DELETE from otp WHERE link =%s"
+            val = (link,)
+            tupleCursor.execute(sql,val)
+            db.commit()
+
         else:
-            print("Ok")
+            temp_details = temp_signup[link]
+            temp_signup.pop(link)
+            if str(otp[0]) == otpform.otp.data:
+                password_hash = bcrypt.generate_password_hash(temp_details["Password"]).decode("utf8")
+                password_hash = password_hash[7:]
+
+                try:
+                    sql = "INSERT INTO user (UserID, Email, Username, Birthday, Password) VALUES (%s, %s, %s, %s, %s)"
+                    val = (1, temp_details["Email"], temp_details["Username"], temp_details["Birthday"], password_hash)
+                    tupleCursor.execute(sql, val)
+                    db.commit()
+
+                except mysql.connector.errors.IntegrityError as errorMsg:
+                    errorMsg = str(errorMsg)
+                    if 'email' in errorMsg.lower():
+                        otpForm.otp.errors.append('The email has already been linked to another account. Please use a different email.')
+                    elif 'username' in errorMsg.lower():
+                        otpForm.otp.errors.append('This username is already taken.')
+                    logfile.info("User account creation failure: Invalid email or username.")
+
+                else:
+                    print("Yes")
+                    sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
+                    val = (temp_details["Username"], password_hash)
+                    tupleCursor.execute(sql, val)
+                    findUser = tupleCursor.fetchone()
+                    sessionInfo['login'] = True
+                    sessionInfo['currentUserID'] = int(findUser[0])
+                    sessionInfo['username'] = findUser[1]
+                    sessionID += 1
+                    sessionInfo['sessionID'] = sessionID
+                    sessions[sessionID] = sessionInfo
+                    logfile.info("User Account Created: User %s" %sessionInfo['username'])
+                    flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
+                    return redirect('/home')
+            else:
+                print("OTP failed")
 
     return render_template('otp.html', otpform = otpform)
 
@@ -1129,5 +1178,5 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
     # app.run(debug=True)

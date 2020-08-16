@@ -70,3 +70,6 @@ class ReplyFeedbackForm(Form):
 
 class TopicForm(Form):
     topic = StringField('Topic', [validators.DataRequired()])
+
+class OTPForm(Form):
+    otp = StringField('OTP', [validators.DataRequired()])

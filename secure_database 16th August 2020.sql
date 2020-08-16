@@ -105,6 +105,31 @@ LOCK TABLES `comment_votes` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `errorlog`
+--
+
+DROP TABLE IF EXISTS `errorlog`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `errorlog` (
+  `datetime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `errorCode` varchar(6) NOT NULL DEFAULT 'OTHERS',
+  `route` varchar(45) NOT NULL,
+  `details` mediumtext NOT NULL,
+  PRIMARY KEY (`datetime`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `errorlog`
+--
+
+LOCK TABLES `errorlog` WRITE;
+/*!40000 ALTER TABLE `errorlog` DISABLE KEYS */;
+/*!40000 ALTER TABLE `errorlog` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `feedback`
 --
 
@@ -123,7 +148,7 @@ CREATE TABLE `feedback` (
   UNIQUE KEY `DatetimePosted_UNIQUE` (`DatetimePosted`),
   KEY `fk_feedback_UserID_idx` (`UserID`),
   CONSTRAINT `fk_feedback_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -132,7 +157,7 @@ CREATE TABLE `feedback` (
 
 LOCK TABLES `feedback` WRITE;
 /*!40000 ALTER TABLE `feedback` DISABLE KEYS */;
-INSERT INTO `feedback` VALUES (1,621235,'ZAP','XhZKfdujvPjYPGdaOMdybehjWbfuvkKrFmectyYRuMibWyuLiAxYXWexxkHjXWhRmmsNoptIgMcTqBwKkqlVyciPwBYfwOedYIoUSdjKSrKHlZgsqhxCWRtMnYgaGCCUaccwxTPVhoFXOKZFvwbkUMExHHoESuaZWSvxIjdHvEKdFAXyulkJOdvwPbWxjZjrtAVXDwvyPImNSSPWdOMUjnwZoFrNrfcrlZDOdKUoZcUtUCZRvWVwIweDwDhlRQplDFrXiZCfRNtCJActGtUTKNIFEYAsVNPbdrZwqvpEgPiGResABaCScIClXdpuVrmsNQAeJyKlSgGZHrinuWLqhtapGWIZvmYTcDSSOBWbTfAJOWVOrgoNCpPEqrRNHaIrlmDUEgtOZokXFFbtbXHifROLeqUrZNJMpaHOEKlHmCcQgExopyHxVhKCYgxiPliDibrCVdFvDgWHdtHESFAhdCTmuRtmbuQlODKgxVbndoOjdtMIXLuyJWvioBvOUMoYXRRYhgXMhOfjbZLKETQJFtYGYYkcfkyXGmXyxbwWZuOUmuZejYMwtMEvCgJoSXseTxGnjwEYOEFiVQZPQDBhBwWRZoknXZSsWSCiDOcAwWTyDgylAhBsLdDRCGdiiANyKAtUHFHBLQNejjsZeCfuHxSfAHJbeKOsexnaUhhIQpqplsFgKLAKGKTXcyOcHmvNqMbHAqbmIhKmbVUNQFfcqFaFMEiaTwtcNCTNpeuCpBqKgNkbYGfOZtYotPZfedeVkXfseFWRddjiRBCNPSLMkkaglxQWopsjbLtRDnwMNNpkovtHFchOijwbbaxJkjDywMKicHuLedXTYCqadEyxOIcxPRnkAhGLDTAHkGyEQKihPDBkIoLDZZikeEveinobqgCBNTBMFZqnyjNciavWSopbZWDkupYCdnMHmruwVhhqssnMvVLEGhuogWLIBduMFcMgOngZImRLWRjVgjvDQhnRRvnuWBsSSgwQLFinxQySFJxjvdsWxCMfDVHnsQKceWshXFfxUoXwLxdHaHZnWrenOeutKCZvRAHGWNlNRKUyrHwDSwHAoEGqUAbikMuAVkhPEWyZgSCPJVNRwvntfWxDvgGitVUTTwwArynPsyJXfVeLCBiZaTBRXISqGaDUPBkVbtkWDQZnydCTxJvIQHMQVpUEDFSdjtZDeBTFNTFlHVswtGxnxMGIKlIQUEsAPcqrdutEEmhydmJbGYkUBHZZpWxbHqVTAvpauuiyuSkIqKMIILWpWdrNkNomWuYjfREYmPdlFnAIWdPeZPoRoeSQwtwHDZeWptVygeoSiJnLCDIOGTGxesTNtGCjFghRPrVdswBdmYrawEacKkyljbptKDrofNhAKRdaIeHJZrIvtsjwRDpaipreEXqsooDZnNXveJmtQmURAAjXUReMtTjHEkPsNgDQroUGrOFqdJSHsEfTKVhdpahIsaZDyiNsFjWsZvDxupJqQnQDBemlKihyXAJBLDtZRvpOKsjAXPJGxwGUOguvNUlLmdwCDQpiSJGYdGFKoQcdHddWmQHddfLVGeaQgEmNiouoXoDrXRWcaTsTrOYcthtNgZrKeghwHgxqQrNpXeaweYlrRQRcEgTvIJHysEedoliAmeDIeIfuYxJaPLUFAESGljEptXaGWFaBNCOHAQtAcriwFwtYhxmfVpGkOnkarViPlNNPTGMKBfiDXMegXgcfWADRpEHCGXkrbfWWrOXBKbnNQgtmqvfOrUPqpCCGiEORmZEeTgPSqGlWFNANpSGMsXsCwuaQcgaLgVnQFMiFLYnIUEwgPgPnooRDyhZNmpIXDwXNpiPHAiTeqdetKbLLywlxQHirTChMeIomIjokqCpXncqkuSLWTHOGVELZmPbroKZshvxYGtpYjebgyMkoYQpmyqTOcZjpjBkBFHqJSHMIYOxtudIEEbsyQIqVkegCuBSjHZXQyAssCiUhZWLDlJbugTdfiXyBQEkMSjvqELIEYbrmSZFCbSvyRNrjtdRsKKobcbPkYdTJuebirKIyXcZKectcawmpVUANhwjCGFJoMecMnlWfJqvfJWOQgByNEVojDZZZvZfWHwZZ','2020-07-06 12:47:12',0),(2,621235,'ZAP','ZAP','2020-07-06 12:47:18',0),(5,621235,'ZAP','Set-cookie: Tamper=703ef080-3556-4337-8239-338b08f9807d','2020-07-06 12:47:24',0),(11,621235,'ZAP','@','2020-07-06 12:48:13',0);
+INSERT INTO `feedback` VALUES (1,621235,'ZAP','XhZKfdujvPjYPGdaOMdybehjWbfuvkKrFmectyYRuMibWyuLiAxYXWexxkHjXWhRmmsNoptIgMcTqBwKkqlVyciPwBYfwOedYIoUSdjKSrKHlZgsqhxCWRtMnYgaGCCUaccwxTPVhoFXOKZFvwbkUMExHHoESuaZWSvxIjdHvEKdFAXyulkJOdvwPbWxjZjrtAVXDwvyPImNSSPWdOMUjnwZoFrNrfcrlZDOdKUoZcUtUCZRvWVwIweDwDhlRQplDFrXiZCfRNtCJActGtUTKNIFEYAsVNPbdrZwqvpEgPiGResABaCScIClXdpuVrmsNQAeJyKlSgGZHrinuWLqhtapGWIZvmYTcDSSOBWbTfAJOWVOrgoNCpPEqrRNHaIrlmDUEgtOZokXFFbtbXHifROLeqUrZNJMpaHOEKlHmCcQgExopyHxVhKCYgxiPliDibrCVdFvDgWHdtHESFAhdCTmuRtmbuQlODKgxVbndoOjdtMIXLuyJWvioBvOUMoYXRRYhgXMhOfjbZLKETQJFtYGYYkcfkyXGmXyxbwWZuOUmuZejYMwtMEvCgJoSXseTxGnjwEYOEFiVQZPQDBhBwWRZoknXZSsWSCiDOcAwWTyDgylAhBsLdDRCGdiiANyKAtUHFHBLQNejjsZeCfuHxSfAHJbeKOsexnaUhhIQpqplsFgKLAKGKTXcyOcHmvNqMbHAqbmIhKmbVUNQFfcqFaFMEiaTwtcNCTNpeuCpBqKgNkbYGfOZtYotPZfedeVkXfseFWRddjiRBCNPSLMkkaglxQWopsjbLtRDnwMNNpkovtHFchOijwbbaxJkjDywMKicHuLedXTYCqadEyxOIcxPRnkAhGLDTAHkGyEQKihPDBkIoLDZZikeEveinobqgCBNTBMFZqnyjNciavWSopbZWDkupYCdnMHmruwVhhqssnMvVLEGhuogWLIBduMFcMgOngZImRLWRjVgjvDQhnRRvnuWBsSSgwQLFinxQySFJxjvdsWxCMfDVHnsQKceWshXFfxUoXwLxdHaHZnWrenOeutKCZvRAHGWNlNRKUyrHwDSwHAoEGqUAbikMuAVkhPEWyZgSCPJVNRwvntfWxDvgGitVUTTwwArynPsyJXfVeLCBiZaTBRXISqGaDUPBkVbtkWDQZnydCTxJvIQHMQVpUEDFSdjtZDeBTFNTFlHVswtGxnxMGIKlIQUEsAPcqrdutEEmhydmJbGYkUBHZZpWxbHqVTAvpauuiyuSkIqKMIILWpWdrNkNomWuYjfREYmPdlFnAIWdPeZPoRoeSQwtwHDZeWptVygeoSiJnLCDIOGTGxesTNtGCjFghRPrVdswBdmYrawEacKkyljbptKDrofNhAKRdaIeHJZrIvtsjwRDpaipreEXqsooDZnNXveJmtQmURAAjXUReMtTjHEkPsNgDQroUGrOFqdJSHsEfTKVhdpahIsaZDyiNsFjWsZvDxupJqQnQDBemlKihyXAJBLDtZRvpOKsjAXPJGxwGUOguvNUlLmdwCDQpiSJGYdGFKoQcdHddWmQHddfLVGeaQgEmNiouoXoDrXRWcaTsTrOYcthtNgZrKeghwHgxqQrNpXeaweYlrRQRcEgTvIJHysEedoliAmeDIeIfuYxJaPLUFAESGljEptXaGWFaBNCOHAQtAcriwFwtYhxmfVpGkOnkarViPlNNPTGMKBfiDXMegXgcfWADRpEHCGXkrbfWWrOXBKbnNQgtmqvfOrUPqpCCGiEORmZEeTgPSqGlWFNANpSGMsXsCwuaQcgaLgVnQFMiFLYnIUEwgPgPnooRDyhZNmpIXDwXNpiPHAiTeqdetKbLLywlxQHirTChMeIomIjokqCpXncqkuSLWTHOGVELZmPbroKZshvxYGtpYjebgyMkoYQpmyqTOcZjpjBkBFHqJSHMIYOxtudIEEbsyQIqVkegCuBSjHZXQyAssCiUhZWLDlJbugTdfiXyBQEkMSjvqELIEYbrmSZFCbSvyRNrjtdRsKKobcbPkYdTJuebirKIyXcZKectcawmpVUANhwjCGFJoMecMnlWfJqvfJWOQgByNEVojDZZZvZfWHwZZ','2020-07-06 12:47:12',0),(2,621235,'ZAP','ZAP','2020-07-06 12:47:18',0),(5,621235,'ZAP','Set-cookie: Tamper=703ef080-3556-4337-8239-338b08f9807d','2020-07-06 12:47:24',0),(11,621235,'ZAP','@','2020-07-06 12:48:13',0),(12,621235,'s','s','2020-08-16 20:13:26',0);
 /*!40000 ALTER TABLE `feedback` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -144,10 +169,10 @@ DROP TABLE IF EXISTS `otp`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `otp` (
-  `OtpID` smallint NOT NULL,
+  `OtpID` smallint NOT NULL AUTO_INCREMENT,
   `link` varchar(50) NOT NULL,
   `otp` int NOT NULL,
-  `Time_Created` datetime NOT NULL,
+  `Time_Created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`OtpID`),
   UNIQUE KEY `link_UNIQUE` (`link`),
   UNIQUE KEY `OtpID_UNIQUE` (`OtpID`),
@@ -245,7 +270,7 @@ CREATE TABLE `post` (
   KEY `fk_post_UserID_idx` (`UserID`),
   CONSTRAINT `fk_post_TopicID` FOREIGN KEY (`TopicID`) REFERENCES `topic` (`TopicID`) ON DELETE CASCADE,
   CONSTRAINT `fk_post_UserID` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -416,4 +441,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-08-16 20:06:29
+-- Dump completed on 2020-08-16 23:31:20

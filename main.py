@@ -1203,9 +1203,10 @@ def error500(e):
     logfile.error("Error 500: Internal Server Error")
     admin = sessionInfo["isAdmin"]
     return render_template('error.html', msg=msg, admin=admin)
+    
 @app.after_request
 def after_request(response):
-    response.headers.add('X-Content-Type-Options', 'nosniff')
+    response.headers['X-Content-Type-Options'] = 'NOSNIFF'
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 

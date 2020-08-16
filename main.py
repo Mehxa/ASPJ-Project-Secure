@@ -5,7 +5,6 @@ import Forms
 from datetime import datetime
 from functools import wraps
 import DatabaseManager
-import secrets
 # Flask mail
 import os
 from flask_mail import Mail, Message
@@ -558,6 +557,21 @@ def signUp():
 
     return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm, sitekey=sitekey)
 
+@app.route('/login/<link>', methods=["GET", "POST"])
+def otp(link):
+    otpform = Forms.OTPForm(request.form)
+    if request.method == "POST" and otpform.validate():
+        sql = "SELECT otp from otp WHERE link = %s"
+        val = (link,)
+        tupleCursor.execute(sql, val)
+        otp = tupleCursor.fetchone()
+        if otp is None:
+            flash('Wrong OTP entered. Please try again!')
+        else:
+            print("Ok")
+
+    return render_template('otp.html', otpform = otpform)
+
 @app.route('/profile/<username>/<sessionId>', methods=["GET", "POST"])
 def profile(username, sessionId):
     # global sessionID
@@ -671,7 +685,7 @@ def changePassword(username):
             sender="deloremipsumonlinestore@outlook.com",
             recipients=[user_email[0]])
         msg.body = "Password Change"
-        msg.html = render_template('email.html', postID="change password", username=username, content=abs_url, posted=0)
+        msg.html = render_template('email.html', postID="change password", username=username, content=0, posted=0, url=abs_url)
         mail.send(msg)
         print("\n\n\nMAIL SENT\n\n\n")
     except Exception as e:
@@ -681,17 +695,22 @@ def changePassword(username):
     else:
         flash('A change password link has been sent to your email. Use it to update your password.', 'success')
         flash('The password link will expire in 30 mins', 'warning')
-        return redirect('/profile/' + str(username))
+        return redirect('/profile/' + str(username) + '/' + str(sessionID))
 
 
 @app.route('/reset/<url>', methods=["GET", "POST"])
 def resetPassword(url):
-    sql = "SELECT TIME_TO_SEC(TIMEDIFF(Time_Created, %s)) FROM password_url WHERE Url = %s"
+    sql = "SELECT TIME_TO_SEC(TIMEDIFF(%s, Time_Created)) FROM password_url WHERE Url = %s"
     val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),url)
     tupleCursor.execute(sql, val)
     reset = tupleCursor.fetchone()
+    print(reset)
     if reset > 1800:
+        sql = "DELETE FROM password_url WHERE Url=%s"
+        val = (url,)
         flash("Your password reset link has expired, please try again!", "error")
+        return redirect("/home")
+    else:
         return redirect("/home")
 
 
@@ -1101,4 +1120,4 @@ def error500(e):
     return render_template('error.html', msg=msg, admin=admin)
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)

@@ -10,6 +10,7 @@ class SearchBarForm(Form):
     topic = SelectField('Topic')
 
 class FeedbackForm(Form):
+    userID = HiddenField()
     reason = StringField('Reason', [validators.DataRequired()], render_kw={"placeholder": "e.g. Feedback regarding post moderation"})
     comment = TextAreaField('Comment', [validators.DataRequired()], render_kw={"rows": 10, "placeholder": "Enter comment here..."})
 
@@ -53,14 +54,17 @@ class UpdatePassword(Form):
     confirmPassword = PasswordField('Re-enter Password', [validators.DataRequired()])
 
 class PostForm(Form):
+    userID = HiddenField()
     topic = SelectField('Topic')
     title = StringField('Title', [validators.DataRequired()], render_kw={"placeholder": "e.g. Error Exception handling in Python"})
     content = TextAreaField('Content', [validators.DataRequired()], render_kw={"rows": 10, "placeholder": "Enter content here..."})
 
 class CommentForm(Form):
+    userID = HiddenField()
     comment = TextAreaField('Comment', [validators.DataRequired()], render_kw={"rows": 3, "placeholder": "Enter comment here..."})
 
 class ReplyForm(Form):
+    userID = HiddenField()
     repliedID = HiddenField()
     reply = TextAreaField('Comment', [validators.DataRequired()], render_kw={"rows": 3, "placeholder": "Enter comment here..."})
 

@@ -35,6 +35,7 @@
           <hr class="mx-auto w-100 mb-4">
           <div class="form-group">
             {{render_field_no_label(commentForm.comment, class= "form-control")}}
+            {{ render_field_no_label(commentForm.userID) }}
           </div>
           <div class="form-group">
             <button type="button" class="btn btn-secondary cancel-form" data-toggle="collapse" href="#commentForm">Cancel</button>
@@ -94,6 +95,7 @@
           <form method="POST" id="replyForm">
             {{ render_field_no_label(replyForm.reply, class= "form-control") }}
             {{ render_field_no_label(replyForm.repliedID, class= "form-control") }}
+            {{ render_field_no_label(replyForm.userID) }}
           </form>
         </div>
         <div class="modal-footer">

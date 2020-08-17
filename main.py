@@ -1173,29 +1173,64 @@ def errorLog():
     log = dictCursor.fetchall()
     return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=log)
 
+@app.errorhandler(400)
+def error400(e):
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Error 400'
+    return render_template('error.html', msg=msg, title=title)
+
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
-    return render_template('error.html', msg=msg)
+    title = 'Unauthorized'
+    return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(403)
 def error403(e):
-    msg = 'Erorr 403: Forbidden'
-    return render_template('error.html', msg=msg)
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Erorr 403'
+    return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(404)
 def error404(e):
     msg = 'Oops! Page not found. Head back to the home page'
+    title= 'Error 404'
     createLog.log_error(request.path, 404, 'Page not found')
     admin = sessionInfo["isAdmin"]
-    return render_template('error.html', msg=msg, admin=admin)
+    return render_template('error.html', msg=msg, admin=admin, title=title)
+
+@app.errorhandler(408)
+def error408(e):
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Error 408'
+    return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(500)
 def error500(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     createLog.log_error(request.path, 500, 'Internal Server Error')
+    title = 'Error 500'
     admin = sessionInfo["isAdmin"]
-    return render_template('error.html', msg=msg, admin=admin)
+    return render_template('error.html', msg=msg, admin=admin, title=title)
+
+@app.errorhandler(501)
+def error501(e):
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Error 501'
+    return render_template('error.html', msg=msg, title=title)
+
+@app.errorhandler(502)
+def error502(e):
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Error 502'
+    return render_template('error.html', msg=msg, title=title)
+
+@app.errorhandler(503)
+def error503(e):
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Error 503'
+    return render_template('error.html', msg=msg, title=title)
+
 
 @app.after_request
 def after_request(response):

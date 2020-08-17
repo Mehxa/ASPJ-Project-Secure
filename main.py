@@ -1,20 +1,28 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, json
 from flask_bcrypt import *
-import mysql.connector, re
-import Forms
-from datetime import datetime
+import mysql.connector, re, random
+from datetime import datetime, timedelta, date
 from functools import wraps
-import DatabaseManager, createLog
-import random
+import Forms, DatabaseManager, createLog
+
 # Flask mail
 import os
 from flask_mail import Mail, Message
 import sys
 import asyncio
 from threading import Thread
+
+# Logging
 import flask_monitoringdashboard as dashboard
-import requests
 import logging, logging.config, yaml
+
+# Graphing
+import json, plotly
+import pandas as pd
+import numpy as np
+import plotly.graph_objs as go
+
+import requests
 import secrets
 
 
@@ -1171,7 +1179,49 @@ def errorLog():
     sql = "SELECT * FROM errorlog ORDER BY datetime DESC"
     dictCursor.execute(sql)
     log = dictCursor.fetchall()
-    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=log)
+
+    sql = "SELECT DISTINCT DATE(datetime) FROM errorlog ORDER BY DATE(datetime) DESC"
+    dictCursor.execute(sql)
+    dates = dictCursor.fetchall()
+
+    data = {
+        '401' : []
+        , '403' : []
+        , '404' : []
+        , '500' : []
+        , 'OTHERS' : []
+    }
+
+    listOfDates = []
+    for x in range(7):
+        dateToCheck = (date.today()-timedelta(x))
+        listOfDates.append(dateToCheck)
+
+        for error in ['401', '403', '404', '500', 'OTHERS']:
+            sql = "SELECT COUNT(*) count FROM errorlog WHERE DATE(datetime)=%s AND errorCode=%s GROUP BY errorCode;"
+            val = (dateToCheck, error)
+            dictCursor.execute(sql, val)
+            errorCount = dictCursor.fetchone()
+            if errorCount==None:
+                data[error].append(0)
+            else:
+                data[error].append(errorCount['count'])
+
+    graph = {
+            'data': [
+                    go.Bar(name='Others', y=data['OTHERS'], x=listOfDates, marker_color='#ffb3f4', offsetgroup=0)
+                    , go.Bar(name=500, y=data['500'], x=listOfDates, marker_color='#d1f082', offsetgroup=0)
+                    , go.Bar(name=404, y=data['404'], x=listOfDates, marker_color='#c7ceea', offsetgroup=0)
+                    , go.Bar(name=403, y=data['403'], x=listOfDates, marker_color='#ffdac1', offsetgroup=0)
+                    , go.Bar(name=401, y=data['401'], x=listOfDates, marker_color='#ffb7b2', offsetgroup=0)
+                    ]
+
+            , 'layout': {}
+            }
+
+    errorGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
+
+    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=log, errorGraph=errorGraph)
 
 @app.errorhandler(401)
 def error401(e):

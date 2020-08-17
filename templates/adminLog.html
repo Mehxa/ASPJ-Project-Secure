@@ -5,11 +5,19 @@
 <link rel="stylesheet" href="/static/styles/home.css">
 
 <style>
-  .logLine {
-    background-color: white;
-    padding: 2px;
-    margin: 2px 0px;
-  }
+table thead {
+  background-color: #444;
+  color: #eee;
+}
+
+tbody tr td {
+  background-color: #f8f8f8;
+  border-bottom: 1px solid #ddd;
+}
+
+tbody tr:hover td {
+  background-color: #dbdbdb;
+}
 </style>
 
 {% endblock %}
@@ -21,13 +29,32 @@
     <div class="col-md-11">
       <h1 class="mb-4">Log</h1>
 
-      {% for line in log %}
-        <div class="logLine">
-          {{line}}
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>DateTime</th>
+              <th>Route</th>
+              <th>Error Code</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for error in log %}
+              <tr>
+                <td>{{ error.datetime }}</td>
+                <td>{{ error.route }}</td>
+                <td>{{ error.errorCode }}</td>
+                <td>{{ error.details }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div> <!--Col-->
+  </div> <!--Row-->
+</div> <!--Container-->
 
 {% endblock %}

@@ -4,7 +4,7 @@ import mysql.connector, re
 import Forms
 from datetime import datetime
 from functools import wraps
-import DatabaseManager
+import DatabaseManager, createLog
 import random
 # Flask mail
 import os
@@ -31,11 +31,9 @@ tupleCursor.execute("SHOW TABLES")
 print(tupleCursor)
 
 app = Flask(__name__)
-# app.logger.disabled = True
+app.logger.disabled = True
 log = logging.getLogger('werkzeug')
 log.disabled = True
-logging.config.dictConfig(yaml.load(open('logging.conf')))
-logfile = logging.getLogger('file')
 
 dashboard.config.init_from(file='config.cfg')
 dashboard.bind(app)
@@ -107,8 +105,10 @@ def admin_required(function_to_wrap):
             if sessionInfo['isAdmin']==1:
                 return function_to_wrap(*args, **kwargs)
             else:
+                createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
                 abort(403)
         else:
+            createLog.log_error(request.path, 401, 'Unauthorized Access to Admin Page')
             abort(401)
     return wrap
 
@@ -377,7 +377,6 @@ def login():
         findUser = dictCursor.fetchone()
         if findUser == None:
             loginForm.password.errors.append('Wrong email or password.')
-            logfile.warn("Failed Login Attempt: User %s" %loginForm.username.data)
             invalid_login_count += 1
             print(invalid_login_count)
         else:
@@ -399,6 +398,7 @@ def login():
                     tupleCursor.execute(sql, val)
                     db.commit()
                     if findUser["LoginAttempts"] >= 6:
+                        createLog.log_error(request.path, 'OTHERS', 'Failed Login Attempt: UserID %s Account Locked' %(findUser["UserID"]))
                         # sql = "UPDATE user"
                         # sql += " SET LoginAttempts=%s,"
                         # sql += " Active=%s"
@@ -464,11 +464,9 @@ def login():
                     flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
                     if findAdmin!=None:
                         sessionInfo['isAdmin'] = True
-                        logfile.info("Successful Admin Login: User %s" %sessionInfo['username'])
                         return redirect('/adminHome')
                     else:
                         sessionInfo['isAdmin'] = False
-                        logfile.info("Successful User Login: User %s" %sessionInfo['username'])
 
                     return redirect('/home') # Change this later to redirect to profile page
 
@@ -607,7 +605,6 @@ def otp(link):
                         otpForm.otp.errors.append('The email has already been linked to another account. Please use a different email.')
                     elif 'username' in errorMsg.lower():
                         otpForm.otp.errors.append('This username is already taken.')
-                    logfile.info("User account creation failure: Invalid email or username.")
 
                 else:
                     print("Yes")
@@ -621,7 +618,6 @@ def otp(link):
                     sessionID += 1
                     sessionInfo['sessionID'] = sessionID
                     sessions[sessionID] = sessionInfo
-                    logfile.info("User Account Created: User %s" %sessionInfo['username'])
                     flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
                     return redirect('/home')
             else:
@@ -1163,39 +1159,37 @@ def replyFeedback(feedbackID):
         return redirect('/adminFeedback')
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
-@app.route('/log')
-@admin_required
-def log():
-    logFile = open('application.log', 'r')
-    lines = logFile.read().splitlines()
-    logFile.close()
-    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=lines)
+@app.route('/errorLog')
+def errorLog():
+    sql = "SELECT * FROM errorlog ORDER BY datetime DESC"
+    dictCursor.execute(sql)
+    log = dictCursor.fetchall()
+    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=log)
 
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
-    logfile.warning("Error 401: Unauthorized Access to Admin Page")
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(403)
 def error403(e):
     msg = 'Erorr 403: Forbidden'
-    logfile.warning("Error 403: Forbidden Access to Admin Page by user %s" %sessionInfo['username'])
     return render_template('error.html', msg=msg)
 
 @app.errorhandler(404)
 def error404(e):
     msg = 'Oops! Page not found. Head back to the home page'
-    logfile.error("Error 404: Page not found")
+    createLog.log_error(request.path, 404, 'Page not found')
     admin = sessionInfo["isAdmin"]
     return render_template('error.html', msg=msg, admin=admin)
 
 @app.errorhandler(500)
 def error500(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
-    logfile.error("Error 500: Internal Server Error")
+    createLog.log_error(request.path, 500, 'Internal Server Error')
     admin = sessionInfo["isAdmin"]
     return render_template('error.html', msg=msg, admin=admin)
+
 @app.after_request
 def after_request(response):
     response.headers.add('X-Content-Type-Options', 'nosniff')

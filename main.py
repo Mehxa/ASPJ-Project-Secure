@@ -260,6 +260,7 @@ def searchPosts():
     return render_template('searchPost.html', currentPage='search', **sessionInfo, searchBarForm=searchBarForm, postList=relatedPosts)
 
 @app.route('/viewPost/<int:postID>/<sessionId>', methods=["GET", "POST"])
+@login_required
 def viewPost(postID, sessionId):
     sessionInfo['prevPage']= request.url_rule
     sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
@@ -362,7 +363,7 @@ def is_human(captcha_response):
     return response_text['success']
 
 global invalid_login_count
-invalid_login_count = 0
+invalid_login_count = 0 #rmb to change
 @app.route('/login', methods=["GET", "POST"])
 def login():
     print("reloaded")
@@ -390,14 +391,14 @@ def login():
                 valid = bcrypt.check_password_hash(password, loginForm.password.data)
                 print(valid)
                 if not valid:
-                    loginForm.password.errors.append('Wrong email or password.')
+                    invalid_login_count += 1
                     sql = "UPDATE user"
                     sql += " SET LoginAttempts=%s"
                     sql += " WHERE Username=%s"
                     val = ( findUser["LoginAttempts"] + 1,findUser["Username"])
                     tupleCursor.execute(sql, val)
                     db.commit()
-                    if findUser["LoginAttempts"] >= 6:
+                    if findUser["LoginAttempts"] >= 4:
                         createLog.log_error(request.path, 'OTHERS', 'Failed Login Attempt: UserID %s Account Locked' %(findUser["UserID"]))
                         # sql = "UPDATE user"
                         # sql += " SET LoginAttempts=%s,"
@@ -421,7 +422,7 @@ def login():
                             msg = Message("Lorem Ipsum",
                                 sender="deloremipsumonlinestore@outlook.com",
                                 recipients=[email])
-                            url = '/reactiveate/' + secret
+                            url = '/reactivate/' + secret
                             msg.body = "Your account has been locked"
                             msg.html = render_template('email.html', postID="account locked", username=findUser['Username'], content=0, posted=0, reply=0, url=url)
                             mail.send(msg)
@@ -438,6 +439,8 @@ def login():
                             print("goes into except")
                         loginForm.password.errors.append("Your account has been locked due to multiple failed login attempts. Check your email to reactivate your account.")
                         #send email
+                    else:
+                        loginForm.password.errors.append('Wrong email or password.')
                 else:
                     captcha_response = request.form['g-recaptcha-response']
                     if is_human(captcha_response):
@@ -499,7 +502,11 @@ def reactivate(secret):
                 sql += " WHERE UserID=("
                 sql += " SELECT UserID FROM reactivate"
                 sql += " WHERE reactivate.Secret=%s)"
-                val = (str(1),str(0),secret)
+                val = (str(1),0,secret)
+                tupleCursor.exectue(sql,val)
+                db.commit()
+                sql = "DELETE from reactivate WHERE Secret=%s"
+                val = (secret,)
                 tupleCursor.exectue(sql,val)
                 db.commit()
         except:
@@ -1192,10 +1199,10 @@ def error500(e):
 
 @app.after_request
 def after_request(response):
-    response.headers.add('X-Content-Type-Options', 'nosniff')
+    response.headers['X-Content-Type-Options'] = 'NOSNIFF'
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
     # app.run(debug=True)

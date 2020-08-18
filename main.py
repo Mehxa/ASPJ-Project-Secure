@@ -40,7 +40,6 @@ db = mysql.connector.connect(
 tupleCursor = db.cursor(buffered=True)
 dictCursor = db.cursor(buffered=True, dictionary=True)
 tupleCursor.execute("SHOW TABLES")
-print(tupleCursor)
 
 app = Flask(__name__)
 app.logger.disabled = True
@@ -206,7 +205,6 @@ def commentVote():
         return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
 
     data = request.get_json(force=True)
-    print(data)
     currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), data['commentID'])
 
     if currentVote==None:
@@ -439,7 +437,6 @@ global invalid_login_count
 invalid_login_count = 0 #rmb to change
 @app.route('/login', methods=["GET", "POST"])
 def login():
-    print("reloaded")
     global invalid_login_count
     sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
     global sessionID
@@ -453,7 +450,6 @@ def login():
             loginForm.password.errors.append('Wrong email or password.')
             createLog.log_user_activity(None, loginForm.username.data, 4)
             invalid_login_count += 1
-            print(invalid_login_count)
         else:
             secret = secrets.token_urlsafe(16)
             if findUser['Active'] == 0:
@@ -463,7 +459,6 @@ def login():
                 password = "$2b$12$" + password
                 password = password.encode("utf8")
                 valid = bcrypt.check_password_hash(password, loginForm.password.data)
-                print(valid)
                 if not valid:
                     createLog.log_user_activity(findUser['UserID'], loginForm.username.data, 4)
                     invalid_login_count += 1
@@ -500,7 +495,6 @@ def login():
                             msg.body = "Your account has been locked"
                             msg.html = render_template('email.html', postID="account locked", username=findUser['Username'], content=0, posted=0, reply=0, url=url)
                             mail.send(msg)
-                            print("\n\n\nMAIL SENT\n\n\n")
                             # sql = "UPDATE feedback "
                             # sql += "SET Resolved=1"
                             # sql += "WHERE FeedbackID = " +str(feedbackID)
@@ -517,9 +511,7 @@ def login():
                         loginForm.password.errors.append('Wrong email or password.')
                 else:
                     captcha_response = request.form['g-recaptcha-response']
-                    if is_human(captcha_response):
-                        print("human")
-                    else:
+                    if not is_human(captcha_response):
                         print("U r a bot")
                     sessionInfo['login'] = True
                     sessionInfo['currentUserID'] = int(findUser['UserID'])
@@ -616,7 +608,6 @@ def signUp():
     if request.method == 'POST' and signUpForm.validate():
         captcha_response = request.form['g-recaptcha-response']
         if is_human(captcha_response):
-            print("human")
             temp_details = {}
             temp_details["Email"] = signUpForm.email.data
             temp_details["Username"] = signUpForm.username.data
@@ -631,7 +622,6 @@ def signUp():
             val = (link, str(OTP))
             tupleCursor.execute(sql, val)
             db.commit()
-            print(temp_details["Email"])
             try:
                 msg = Message("Lorem Ipsum",
                     sender="deloremipsumonlinestore@outlook.com",
@@ -639,7 +629,6 @@ def signUp():
                 msg.body = "OTP for Sign Up"
                 msg.html = render_template('otp_email.html', OTP=OTP, username=temp_details["Username"])
                 mail.send(msg)
-                print("\n\n\nMAIL SENT\n\n\n")
             except Exception as e:
                 print(e)
                 print("Error:", sys.exc_info()[0])
@@ -695,7 +684,6 @@ def otp(link):
                         otpForm.otp.errors.append('This username is already taken.')
 
                 else:
-                    print("Yes")
                     sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
                     val = (temp_details["Username"], password_hash)
                     tupleCursor.execute(sql, val)
@@ -810,7 +798,6 @@ def profile(username, sessionId):
 @app.route('/changePassword/<username>', methods=["GET"])
 def changePassword(username):
     url = secrets.token_urlsafe()
-    print(url)
     sql = "INSERT INTO password_url(Url) VALUES(%s)"
     val = (url,)
     tupleCursor.execute(sql, val)
@@ -820,7 +807,6 @@ def changePassword(username):
     user_email = tupleCursor.fetchone()
     db.commit()
     abs_url = "http://127.0.0.1:5000/reset/" + url
-    print(user_email)
     try:
         msg = Message("Lorem Ipsum",
             sender="deloremipsumonlinestore@outlook.com",
@@ -828,7 +814,6 @@ def changePassword(username):
         msg.body = "Password Change"
         msg.html = render_template('email.html', postID="change password", username=username, content=0, posted=0, url=abs_url)
         mail.send(msg)
-        print("\n\n\nMAIL SENT\n\n\n")
     except Exception as e:
         print(e)
         print("Error:", sys.exc_info()[0])
@@ -845,7 +830,6 @@ def resetPassword(url):
     val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),url)
     tupleCursor.execute(sql, val)
     reset = tupleCursor.fetchone()
-    print(reset)
     if reset > 1800:
         sql = "DELETE FROM password_url WHERE Url=%s"
         val = (url,)
@@ -1128,7 +1112,6 @@ def adminUsers():
     sql = "SELECT Username From user"
     tupleCursor.execute(sql)
     listOfUsernames = tupleCursor.fetchall()
-    print(listOfUsernames)
     return render_template('adminUsers.html', currentPage='adminUsers', **sessionInfo, listOfUsernames = listOfUsernames)
 
 @app.route('/adminDeleteUser/<username>', methods=['POST'])
@@ -1148,7 +1131,6 @@ def deleteUser(username):
         msg.body = "Your account has been terminated"
         msg.html = render_template('email.html', postID="delete user", username=username, content=0, posted=0)
         mail.send(msg)
-        print("\n\n\nMAIL SENT\n\n\n")
     except Exception as e:
         print(e)
         print("Error:", sys.exc_info()[0])
@@ -1166,7 +1148,6 @@ def deletePost(postID):
     val = (postID,)
     dictCursor.execute(sql, val)
     email_info = dictCursor.fetchall()
-    print(email_info)
 
     sql = "DELETE FROM post WHERE post.PostID=%s"
     val = (postID,)
@@ -1198,7 +1179,6 @@ def adminFeedback():
     sql += " WHERE feedback.Resolved = 0"
     dictCursor.execute(sql)
     feedbackList = dictCursor.fetchall()
-    print(feedbackList)
     return render_template('adminFeedback.html', currentPage='adminFeedback', **sessionInfo, feedbackList=feedbackList)
 
 @app.route('/replyFeedback/<feedbackID>',methods=["GET","POST"])
@@ -1213,13 +1193,11 @@ def replyFeedback(feedbackID):
     val = (str(feedbackID),)
     dictCursor.execute(sql, val)
     feedbackList = dictCursor.fetchall()
-    print(feedbackList)
     replyForm = Forms.ReplyFeedbackForm(request.form)
     # uncomment here
     if request.method == 'POST' and replyForm.validate():
         reply=replyForm.reply.data
         email=feedbackList[0]['Email']
-        print(email)
         try:
             msg = Message("Lorem Ipsum",
                 sender="deloremipsumonlinestore@outlook.com",
@@ -1227,7 +1205,6 @@ def replyFeedback(feedbackID):
             msg.body = "We love your feedback!"
             msg.html = render_template('email.html', postID="feedback reply", username=feedbackList[0]['Username'], content=feedbackList[0]['Content'], posted=feedbackList[0]['DatetimePosted'], reply=reply)
             mail.send(msg)
-            print("\n\n\nMAIL SENT\n\n\n")
             # sql = "UPDATE feedback "
             # sql += "SET Resolved=1"
             # sql += "WHERE FeedbackID = " +str(feedbackID)

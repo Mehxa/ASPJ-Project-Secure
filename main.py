@@ -114,9 +114,9 @@ def admin_required(function_to_wrap):
                 return function_to_wrap(*args, **kwargs)
             else:
                 createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
+                createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
                 abort(403)
         else:
-            createLog.log_error(request.path, 401, 'Unauthorized Access to Admin Page')
             abort(401)
     return wrap
 
@@ -131,9 +131,6 @@ def get_all_topics(option):
     if option=='all':
         topicTuples.insert(0, ('0', 'All Topics'))
     return topicTuples
-
-
-
 
 
 @app.route('/postVote', methods=["GET", "POST"])
@@ -197,6 +194,69 @@ def postVote():
     updatedVoteTotal = DatabaseManager.calculate_updated_post_votes(data['postID'])
     return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
     , 'newVote': newVote, 'updatedVoteTotal': updatedVoteTotal, 'postID': data['postID']}), 200)
+
+@app.route('/commentVote', methods=["GET", "POST"])
+def commentVote():
+    if not sessionInfo['login']:
+        flash('You must be logged in to vote.', 'warning')
+        return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
+
+    data = request.get_json(force=True)
+    print(data)
+    currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), data['commentID'])
+
+    if currentVote==None:
+        if data['voteValue']=='1':
+            toggleUpvote = True
+            toggleDownvote = False
+            newVote = 1
+            upvoteChange = '+1'
+            downvoteChange = '0'
+        else:
+            toggleUpvote = False
+            toggleDownvote = True
+            newVote = -1
+            upvoteChange = '0'
+            downvoteChange = '+1'
+
+        DatabaseManager.insert_comment_vote(str(sessionInfo['currentUserID']), data['commentID'], data['voteValue'])
+
+    else: # If vote for post exists
+        if currentVote['Vote']==1:
+            upvoteChange = '-1'
+            if data['voteValue']=='1':
+                toggleUpvote = True
+                toggleDownvote = False
+                newVote = 0
+                downvoteChange = '0'
+            else:
+                toggleUpvote = True
+                toggleDownvote = True
+                newVote = -1
+                downvoteChange = '+1'
+
+        else: # currentVote['Vote']==-1
+            downvoteChange = '-1'
+            if data['voteValue']=='1':
+                toggleUpvote = True
+                toggleDownvote = True
+                newVote = 1
+                upvoteChange = '+1'
+            else:
+                toggleUpvote = False
+                toggleDownvote = True
+                newVote = 0
+                upvoteChange = '0'
+
+        if newVote==0:
+            DatabaseManager.delete_comment_vote(str(sessionInfo['currentUserID']), data['commentID'])
+        else:
+            DatabaseManager.update_comment_vote(str(newVote), str(sessionInfo['currentUserID']), data['commentID'])
+
+    DatabaseManager.update_overall_comment_vote(upvoteChange, downvoteChange, data['commentID'])
+    updatedCommentTotal = DatabaseManager.calculate_updated_comment_votes(data['commentID'])
+    return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
+    , 'newVote': newVote, 'updatedCommentTotal': updatedCommentTotal, 'commentID': data['commentID']}), 200)
 
 @app.route('/')
 def main():
@@ -386,6 +446,7 @@ def login():
         findUser = dictCursor.fetchone()
         if findUser == None:
             loginForm.password.errors.append('Wrong email or password.')
+            createLog.log_user_activity(None, loginForm.username.data, 4)
             invalid_login_count += 1
             print(invalid_login_count)
         else:
@@ -399,15 +460,16 @@ def login():
                 valid = bcrypt.check_password_hash(password, loginForm.password.data)
                 print(valid)
                 if not valid:
+                    createLog.log_user_activity(findUser['UserID'], loginForm.username.data, 4)
                     invalid_login_count += 1
                     sql = "UPDATE user"
                     sql += " SET LoginAttempts=%s"
                     sql += " WHERE Username=%s"
-                    val = ( findUser["LoginAttempts"] + 1,findUser["Username"])
+                    val = ( findUser["LoginAttempts"] + 1, findUser["Username"])
                     tupleCursor.execute(sql, val)
                     db.commit()
                     if findUser["LoginAttempts"] >= 4:
-                        createLog.log_error(request.path, 'OTHERS', 'Failed Login Attempt: UserID %s Account Locked' %(findUser["UserID"]))
+                        createLog.log_user_activity(findUser['UserID'], findUser['Username'], 5)
                         # sql = "UPDATE user"
                         # sql += " SET LoginAttempts=%s,"
                         # sql += " Active=%s"
@@ -473,6 +535,7 @@ def login():
                     tupleCursor.execute(sql, val)
                     db.commit()
                     flash('Welcome! You are now logged in as %s.' %(sessionInfo['username']), 'success')
+                    createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 2)
                     if findAdmin!=None:
                         sessionInfo['isAdmin'] = True
                         return redirect('/adminHome')
@@ -504,6 +567,10 @@ def reactivate(secret):
                 flash("This link has expired")
                 # return render_template('reactivate.html', resend)
             else:
+                sql = "SELECT r.UserID UserID, Username FROM reactivate r INNER JOIN user u ON r.UserID=u.UserID WHERE r.Secret=%s"
+                val = (secret,)
+                user = dictCursor.exectue(sql,val)
+                createLog.log_user_activity(user['UserID'], findUser['Username'], 6)
                 sql = "UPDATE user"
                 sql += " SET Active=%s"
                 sql += " ,LoginAttempts=%s"
@@ -527,8 +594,9 @@ def reactivate(secret):
 def logout():
     global sessionID
     sessionInfo = sessions[sessionID]
+    createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 3)
     sessionInfo['login'] = False
-    sessionInfo['currentUser'] = 0
+    sessionInfo['currentUserID'] = 0
     sessionInfo['username'] = ''
     sessions.pop(sessionID)
     return redirect('/home')
@@ -1180,24 +1248,20 @@ def errorLog():
     dictCursor.execute(sql)
     log = dictCursor.fetchall()
 
-    sql = "SELECT DISTINCT DATE(datetime) FROM errorlog ORDER BY DATE(datetime) DESC"
+    sql = "SELECT DISTINCT errorCode FROM errorlog ORDER BY errorCode DESC"
     dictCursor.execute(sql)
-    dates = dictCursor.fetchall()
+    distinctEC = dictCursor.fetchall()
 
-    data = {
-        '401' : []
-        , '403' : []
-        , '404' : []
-        , '500' : []
-        , 'OTHERS' : []
-    }
+    data = {}
+    for code in distinctEC:
+        data[code['errorCode']] = []
 
     listOfDates = []
     for x in range(7):
         dateToCheck = (date.today()-timedelta(x))
         listOfDates.append(dateToCheck)
 
-        for error in ['401', '403', '404', '500', 'OTHERS']:
+        for error in data:
             sql = "SELECT COUNT(*) count FROM errorlog WHERE DATE(datetime)=%s AND errorCode=%s GROUP BY errorCode;"
             val = (dateToCheck, error)
             dictCursor.execute(sql, val)
@@ -1207,32 +1271,110 @@ def errorLog():
             else:
                 data[error].append(errorCount['count'])
 
-    graph = {
-            'data': [
-                    go.Bar(name='Others', y=data['OTHERS'], x=listOfDates, marker_color='#ffb3f4', offsetgroup=0)
-                    , go.Bar(name=500, y=data['500'], x=listOfDates, marker_color='#d1f082', offsetgroup=0)
-                    , go.Bar(name=404, y=data['404'], x=listOfDates, marker_color='#c7ceea', offsetgroup=0)
-                    , go.Bar(name=403, y=data['403'], x=listOfDates, marker_color='#ffdac1', offsetgroup=0)
-                    , go.Bar(name=401, y=data['401'], x=listOfDates, marker_color='#ffb7b2', offsetgroup=0)
-                    ]
+    markerColor = {
+        '400' : '#ffef00'
+        , '401' : '#ffa600'
+        , '403' : '#ff7c43'
+        , '404' : '#f95d6a'
+        , '408' : '#d45087'
+        , '500' : '#a05195'
+        , '501' : '#665191'
+        , '502' : '#2f4b7c'
+        , '503' : '#003f5c'
+    }
 
+    dataArray = []
+    for error in data:
+        newBar = go.Bar(name=error, y=data[error], x=listOfDates, marker_color=markerColor[error], offsetgroup=0)
+        dataArray.append(newBar)
+
+    graph = {
+            'data': dataArray
             , 'layout': {}
             }
 
     errorGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
 
-    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=log, errorGraph=errorGraph)
+    return render_template('adminErrorLog.html', currentPage='errorLog', **sessionInfo, log=log, errorGraph=errorGraph)
+
+@app.route('/userActivityLog')
+def userActivityLog():
+    sql = "SELECT * FROM useractivitylog l INNER JOIN useractivitycode c ON c.activityCode=l.activityCode ORDER BY datetime DESC"
+    dictCursor.execute(sql)
+    log = dictCursor.fetchall()
+
+    sql = "SELECT DISTINCT activityCode FROM useractivitylog ORDER BY activityCode DESC"
+    dictCursor.execute(sql)
+    distinctAC = dictCursor.fetchall()
+
+    data = {}
+    for code in distinctAC:
+        data[code['activityCode']] = []
+
+    listOfDates = []
+    for x in range(7):
+        dateToCheck = (date.today()-timedelta(x))
+        listOfDates.append(dateToCheck)
+
+        for activity in data:
+            sql = "SELECT COUNT(*) count FROM useractivitylog WHERE DATE(datetime)=%s AND activityCode=%s GROUP BY activityCode;"
+            val = (dateToCheck, activity)
+            dictCursor.execute(sql, val)
+            activityCount = dictCursor.fetchone()
+            if activityCount==None:
+                data[activity].append(0)
+            else:
+                data[activity].append(activityCount['count'])
+
+    markerColor = {
+        1 : '#ffef00'
+        , 2 : '#ffa600'
+        , 3 : '#ff7c43'
+        , 4 : '#f95d6a'
+        , 5 : '#d45087'
+        , 6 : '#a05195'
+        , 7 : '#665191'
+        , 8 : '#2f4b7c'
+        , 9 : '#003f5c'
+    }
+
+    activityName = {
+        1 : 'Sign Up'
+        , 2 : 'Login'
+        , 3 : 'Log Out'
+        , 4 : 'Failed Login'
+        , 5 : 'Account Locked'
+        , 6 : 'Account Reactivated'
+        , 7 : 'Forbidden Access'
+    }
+
+    dataArray = []
+    for activity in data:
+        newBar = go.Bar(name=activityName[activity], y=data[activity], x=listOfDates, marker_color=markerColor[activity], offsetgroup=0)
+        dataArray.append(newBar)
+
+    graph = {
+            'data': dataArray
+            , 'layout': {}
+            }
+
+    activityGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
+
+    return render_template('adminUserActivityLog.html', currentPage='userActivityLog', **sessionInfo, log=log, activityGraph=activityGraph)
+
 
 @app.errorhandler(400)
 def error400(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Error 400'
+    createLog.log_error(request.path, 400, 'Bad Request')
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(401)
 def error401(e):
     msg = 'Erorr 401: Unauthorized'
-    title = 'Unauthorized'
+    title = 'Erorr 401'
+    createLog.log_error(request.path, 401, 'Unauthorized Access to Admin Page')
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(403)
@@ -1253,6 +1395,7 @@ def error404(e):
 def error408(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Error 408'
+    createLog.log_error(request.path, 408, 'Request-Timeout')
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(500)
@@ -1267,18 +1410,21 @@ def error500(e):
 def error501(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Error 501'
+    createLog.log_error(request.path, 501, 'Not Implemented')
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(502)
 def error502(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Error 502'
+    createLog.log_error(request.path, 502, 'Bad Gateway')
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(503)
 def error503(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Error 503'
+    createLog.log_error(request.path, 503, 'Service Unavailable')
     return render_template('error.html', msg=msg, title=title)
 
 

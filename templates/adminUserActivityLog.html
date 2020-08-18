@@ -1,0 +1,96 @@
+{% extends "adminBase.html" %}
+{% block title %}Log{% endblock %}
+
+{% block style %}
+<!--Plotly-->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+
+<link rel="stylesheet" href="/static/styles/home.css">
+
+<style>
+table thead {
+  background-color: #444;
+  color: #eee;
+}
+
+tbody tr td {
+  border-bottom: 1px solid #ddd;
+}
+
+tbody tr.severity-1 td {
+  background-color: #f8f8f8;
+}
+tbody tr.severity-1:hover td {
+  background-color: #dbdbdb;
+}
+
+tbody tr.severity-3 td {
+  background-color: #ff5f32;
+}
+tbody tr.severity-3:hover td {
+  background-color: #ff4141;
+}
+
+tbody tr.severity-2 td {
+  background-color: #fce600;
+}
+tbody tr.severity-2:hover td {
+  background-color: #ffcc00;
+}
+
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid my-4">
+  <div class="row justify-content-center">
+    <div class="col-md-11 row">
+      <h1 class="mb-4 ml-2">Activity Log</h1>
+    </div>
+
+    <div class="col-md-11 row">
+      <div class="col-md-5">
+        <div class="sticky-top">
+          <div id="activityGraph"></div>
+          <script>
+            var activityData = {{activityGraph | safe}};
+            activityData.layout = {xaxis: {dtick: 86400000.0}, height: 600, barmode: 'stack'};
+            var chart = Plotly.newPlot("activityGraph", activityData.data, activityData.layout, {responsive: true, displayModeBar:false});
+          </script>
+        </div> <!--Sticky-->
+      </div> <!--Col-->
+
+      <div class="col-md-7">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>DateTime</th>
+                <th>User ID</th>
+                <th>Username</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for activity in log %}
+              <tr class="severity-{{ activity.severity }}">
+                <td>{{ activity.datetime }}</td>
+                <td>{{ activity.UserID }}</td>
+                <td>{{ activity.username }}</td>
+                <td>{{ activity.details }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div> <!--Table-->
+      </div> <!--Col-->
+
+    </div> <!--Main Col, Sub row-->
+  </div> <!--Row-->
+</div> <!--Container-->
+
+{% endblock %}

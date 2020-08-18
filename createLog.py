@@ -15,3 +15,9 @@ def log_error(route, errorCode, details):
     val = (route, errorCode, details)
     tupleCursor.execute(sql, val)
     db.commit()
+
+def log_user_activity(userID, username, activityCode):
+    sql = 'INSERT INTO useractivitylog (UserID, username, activityCode) VALUES (%s, %s, %s)'
+    val = (userID, username, activityCode)
+    tupleCursor.execute(sql, val)
+    db.commit()

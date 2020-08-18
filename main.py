@@ -25,6 +25,10 @@ import plotly.graph_objs as go
 import requests
 import secrets
 
+from werkzeug.exceptions import HTTPException, InternalServerError
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+sentry_sdk.init("https://4ca6ecbff8af4a23aea3b0e1d21850fc@o435045.ingest.sentry.io/5392828",integrations=[FlaskIntegration()])
 
 db = mysql.connector.connect(
     host="localhost",
@@ -265,6 +269,7 @@ def main():
 @app.route('/home', methods=["GET", "POST"])
 def home():
 #     abort(500)
+    # division_by_zero = 1 / 0
     sessionInfo['prevPage']= request.url_rule
     searchBarForm = Forms.SearchBarForm(request.form)
     searchBarForm.topic.choices = get_all_topics('all')
@@ -470,14 +475,13 @@ def login():
                     db.commit()
                     if findUser["LoginAttempts"] >= 4:
                         createLog.log_user_activity(findUser['UserID'], findUser['Username'], 5)
-                        # sql = "UPDATE user"
-                        # sql += " SET LoginAttempts=%s,"
-                        # sql += " Active=%s"
-                        # sql += " WHERE Username=%s"
-                        # val = (str(0),str(0),findUser["Username"])
-                        # tupleCursor.execute(sql, val)
-                        # db.commit()
-                        # secret = secrets.token_urlsafe(16)
+                        sql = "UPDATE user"
+                        sql += " SET LoginAttempts=%s,"
+                        sql += " Active=%s"
+                        sql += " WHERE Username=%s"
+                        val = (str(0),str(0),findUser["Username"])
+                        tupleCursor.execute(sql, val)
+                        db.commit()
                         sql = "INSERT into reactivate"
                         sql += " VALUES (%s,%s,%s,%s)"
                         current = "SELECT NOW()"
@@ -564,8 +568,8 @@ def reactivate(secret):
             tupleCursor.execute(sql,val)
             timePassed = tupleCursor.fetchone()
             if int(timePassed) > 168:
-                flash("This link has expired")
-                # return render_template('reactivate.html', resend)
+                flash("This link has expired. Attempt login to receive another reactivation link.")
+                return render_template('reactivate.html')
             else:
                 sql = "SELECT r.UserID UserID, Username FROM reactivate r INNER JOIN user u ON r.UserID=u.UserID WHERE r.Secret=%s"
                 val = (secret,)
@@ -580,10 +584,11 @@ def reactivate(secret):
                 val = (str(1),0,secret)
                 tupleCursor.exectue(sql,val)
                 db.commit()
-                sql = "DELETE from reactivate WHERE Secret=%s"
+                sql = "DELETE FROM reactivate WHERE Secret=%s"
                 val = (secret,)
                 tupleCursor.exectue(sql,val)
                 db.commit()
+                return render_template('home.html')
         except:
             flash("Invalid link")
 
@@ -1397,14 +1402,14 @@ def error408(e):
     title = 'Error 408'
     createLog.log_error(request.path, 408, 'Request-Timeout')
     return render_template('error.html', msg=msg, title=title)
-
-@app.errorhandler(500)
-def error500(e):
-    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
-    createLog.log_error(request.path, 500, 'Internal Server Error')
-    title = 'Error 500'
-    admin = sessionInfo["isAdmin"]
-    return render_template('error.html', msg=msg, admin=admin, title=title)
+#
+# @app.errorhandler(500)
+# def error500(e):
+#     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+#     createLog.log_error(request.path, 500, 'Internal Server Error')
+#     title = 'Error 500'
+#     admin = sessionInfo["isAdmin"]
+#     return render_template('error.html', msg=msg, admin=admin, title=title)
 
 @app.errorhandler(501)
 def error501(e):
@@ -1427,13 +1432,26 @@ def error503(e):
     createLog.log_error(request.path, 503, 'Service Unavailable')
     return render_template('error.html', msg=msg, title=title)
 
+@app.errorhandler(InternalServerError)
+def handle_500(e):
+    original = getattr(e, "original_exception", None)
+    msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
+    title = 'Error 501'
+    if original is None:
+        # direct 500 error, such as abort(500)
+        return render_template("error.html", msg=msg, title = title), 500
+
+    # wrapped unhandled error
+    return render_template("error.html", e=original,msg=msg, title = title), 500
+
 
 @app.after_request
 def after_request(response):
     response.headers['X-Content-Type-Options'] = 'NOSNIFF'
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    # response.headers.add('Access-Control-Allow-Origin', 'https://www.google.com')
     return response
 
 if __name__ == "__main__":
-    app.run(debug=False)
-    # app.run(debug=True)
+    # app.run(debug=False)
+    app.run(debug=True)

@@ -54,7 +54,7 @@ app.config.update(
     MAIL_USE_TLS= True,
     MAIL_USE_SSL= False,
 	MAIL_USERNAME = 'deloremipsumonlinestore@outlook.com',
-	# MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
+	MAIL_PASSWORD = os.environ["MAIL_PASSWORD"],
 	MAIL_DEBUG = True,
 	MAIL_SUPPRESS_SEND = False,
     MAIL_ASCII_ATTACHMENTS = True,
@@ -648,56 +648,82 @@ def otp(link):
     global sessionID
     global temp_signup
     otpform = Forms.OTPForm(request.form)
+    sql = "SELECT otp, TIME_TO_SEC(TIMEDIFF(%s, Time_Created)) from otp WHERE link = %s"
+    val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), link)
+    tupleCursor.execute(sql, val)
+    otp = tupleCursor.fetchone()
+    if otp is None:
+        abort(404)
     if request.method == "POST" and otpform.validate():
-        sql = "SELECT otp, TIME_TO_SEC(TIMEDIFF(%s, Time_Created)) from otp WHERE link = %s"
-        val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), link)
-        tupleCursor.execute(sql, val)
-        otp = tupleCursor.fetchone()
-        if otp is None:
-            flash('Wrong OTP entered. Please try again!')
-        elif otp[1] > 180:
-            flash('Your OTP has expired. Please resubmit the signup form')
-            temp_signup.pop(link)
+        if otp[1] > 180:
+            flash('Your OTP has expired. Please resubmit the signup form','danger')
             sql = "DELETE from otp WHERE link =%s"
             val = (link,)
             tupleCursor.execute(sql,val)
+            temp_signup.pop(link)
             db.commit()
+            return redirect('/signup')
+        temp_details = temp_signup[link]
+        if str(otp[0]) == otpform.otp.data:
+            password_hash = bcrypt.generate_password_hash(temp_details["Password"]).decode("utf8")
+            password_hash = password_hash[7:]
+
+            try:
+                sql = "INSERT INTO user (UserID, Email, Username, Birthday, Password) VALUES (%s, %s, %s, %s, %s)"
+                val = (1, temp_details["Email"], temp_details["Username"], temp_details["Birthday"], password_hash)
+                tupleCursor.execute(sql, val)
+                db.commit()
+
+            except mysql.connector.errors.IntegrityError as errorMsg:
+                errorMsg = str(errorMsg)
+                if 'email' in errorMsg.lower():
+                    otpForm.otp.errors.append('The email has already been linked to another account. Please use a different email.')
+                elif 'username' in errorMsg.lower():
+                    otpForm.otp.errors.append('This username is already taken.')
+
+            else:
+                temp_signup.pop(link)
+                sql = "DELETE from otp WHERE link =%s"
+                val = (link,)
+                tupleCursor.execute(sql,val)
+                db.commit()
+                sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
+                val = (temp_details["Username"], password_hash)
+                tupleCursor.execute(sql, val)
+                findUser = tupleCursor.fetchone()
+                sessionInfo['login'] = True
+                sessionInfo['currentUserID'] = int(findUser[0])
+                sessionInfo['username'] = findUser[1]
+                sessionID += 1
+                sessionInfo['sessionID'] = sessionID
+                sessions[sessionID] = sessionInfo
+                flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
+                return redirect('/home')
+        elif temp_details["Resend count"] < 3:
+            temp_details["Resend count"] += 1
+            OTP = random.randint(100000, 999999)
+            sql = "UPDATE otp SET otp =%s WHERE link =%s"
+            val = (OTP, link)
+            tupleCursor.execute(sql, val)
+            db.commit()
+            try:
+                msg = Message("Lorem Ipsum",
+                    sender="deloremipsumonlinestore@outlook.com",
+                    recipients=[temp_details["Email"]])
+                msg.body = "OTP for Sign Up"
+                msg.html = render_template('otp_email.html', OTP=OTP, username=temp_details["Username"])
+                mail.send(msg)
+            except Exception as e:
+                print(e)
+                print("Error:", sys.exc_info()[0])
+                print("goes into except")
+            else:
+                flash("Wrong OTP, please try again!", "warning")
+                return redirect("/login/" + link)
 
         else:
-            temp_details = temp_signup[link]
-            temp_signup.pop(link)
-            if str(otp[0]) == otpform.otp.data:
-                password_hash = bcrypt.generate_password_hash(temp_details["Password"]).decode("utf8")
-                password_hash = password_hash[7:]
-
-                try:
-                    sql = "INSERT INTO user (UserID, Email, Username, Birthday, Password) VALUES (%s, %s, %s, %s, %s)"
-                    val = (1, temp_details["Email"], temp_details["Username"], temp_details["Birthday"], password_hash)
-                    tupleCursor.execute(sql, val)
-                    db.commit()
-
-                except mysql.connector.errors.IntegrityError as errorMsg:
-                    errorMsg = str(errorMsg)
-                    if 'email' in errorMsg.lower():
-                        otpForm.otp.errors.append('The email has already been linked to another account. Please use a different email.')
-                    elif 'username' in errorMsg.lower():
-                        otpForm.otp.errors.append('This username is already taken.')
-
-                else:
-                    sql = "SELECT UserID, Username FROM user WHERE Username=%s AND Password=%s"
-                    val = (temp_details["Username"], password_hash)
-                    tupleCursor.execute(sql, val)
-                    findUser = tupleCursor.fetchone()
-                    sessionInfo['login'] = True
-                    sessionInfo['currentUserID'] = int(findUser[0])
-                    sessionInfo['username'] = findUser[1]
-                    sessionID += 1
-                    sessionInfo['sessionID'] = sessionID
-                    sessions[sessionID] = sessionInfo
-                    flash('Account successfully created! You are now logged in as %s.' %(sessionInfo['username']), 'success')
-                    return redirect('/home')
-            else:
-                print("OTP failed")
+            flash("You have failed OTP too many times. Please recheck your details before you submit the sign up form!", 'danger')
+            return redirect("/signup")
 
     return render_template('otp.html', otpform = otpform)
 
@@ -743,13 +769,23 @@ def profile(username, sessionId):
                 updateEmailForm.email.errors.append('The email has already been linked to another account. Please use a different email.')
                 flash("This email has already been linked to another account. Please use a different email.", "success")
         else:
-            flash('Account successfully updated!', 'success')
+            try:
+                msg = Message("Lorem Ipsum",
+                    sender="deloremipsumonlinestore@outlook.com",
+                    recipients=[userData["Email"]])
+                msg.body = "Profile Update"
+                msg.html = render_template('update_email.html', value="Email", url="http://127.0.0.1:5000/changePassword/" + userData["Username"], username=userData["Username"])
+                mail.send(msg)
+            except Exception as e:
+                print(e)
+                print("Error:", sys.exc_info()[0])
+                print("goes into except")
+            else:
+                flash('Account successfully updated!', 'success')
 
-            return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
+                return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
 
     if request.method == "POST" and updateUsernameForm.validate():
-        # password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
-        # password = password_hash[7:]
         sql = "UPDATE user "
         sql += "SET Username=%s"
         sql += "WHERE UserID=%s"
@@ -770,8 +806,20 @@ def profile(username, sessionId):
             db.commit()
             sessionInfo['username'] = dictCursor['Username']
             sessions[sessionID] = sessionInfo
-            flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
-            return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
+            try:
+                msg = Message("Lorem Ipsum",
+                    sender="deloremipsumonlinestore@outlook.com",
+                    recipients=[userData["Email"]])
+                msg.body = "Profile Update"
+                msg.html = render_template('update_email.html', value="Username", url="http://127.0.0.1:5000/changePassword/" + userData["Username"], username=userData["Username"])
+                mail.send(msg)
+            except Exception as e:
+                print(e)
+                print("Error:", sys.exc_info()[0])
+                print("goes into except")
+            else:
+                flash('Account successfully updated! Your username now is %s.' %(sessionInfo['username']), 'success')
+                return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
 
     if request.method == "POST" and updateStatusForm.validate():
         sql = "UPDATE user "
@@ -786,26 +834,41 @@ def profile(username, sessionId):
             errorMsg = str(errorMsg)
             flash("An unexpected error has occurred!", "warning")
         else:
-            flash('Account successfully updated!', 'success')
+            try:
+                msg = Message("Lorem Ipsum",
+                    sender="deloremipsumonlinestore@outlook.com",
+                    recipients=[userData["Email"]])
+                msg.body = "Profile Update"
+                msg.html = render_template('update_email.html', value="Status", url="http://127.0.0.1:5000/changePassword/" + userData["Username"], username=userData["Username"])
+                mail.send(msg)
+            except Exception as e:
+                print(e)
+                print("Error:", sys.exc_info()[0])
+                print("goes into except")
+            else:
+                flash('Account successfully updated!', 'success')
 
-            return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
+                return redirect('/profile/' + sessionInfo['username'] + '/' +str(sessionID))
 
 
 
     return render_template('profile.html', currentPage='myProfile', **sessionInfo, userData=userData, recentPosts=recentPosts,
     updateEmailForm=updateEmailForm, updateUsernameForm=updateUsernameForm, updateStatusForm=updateStatusForm)
 
+user_to_url = {}
 @app.route('/changePassword/<username>', methods=["GET"])
 def changePassword(username):
+    global user_to_url
     url = secrets.token_urlsafe()
     sql = "INSERT INTO password_url(Url) VALUES(%s)"
     val = (url,)
     tupleCursor.execute(sql, val)
+    db.commit()
+    user_to_url[url] = username
     user_email = "SELECT Email FROM user WHERE user.username=%s"
     val = (username,)
     tupleCursor.execute(user_email, val)
     user_email = tupleCursor.fetchone()
-    db.commit()
     abs_url = "http://127.0.0.1:5000/reset/" + url
     try:
         msg = Message("Lorem Ipsum",
@@ -820,23 +883,38 @@ def changePassword(username):
         print("goes into except")
     else:
         flash('A change password link has been sent to your email. Use it to update your password.', 'success')
-        flash('The password link will expire in 30 mins', 'warning')
+        flash('The password link will expire in 10 mins', 'warning')
         return redirect('/profile/' + str(username) + '/' + str(sessionID))
 
 
 @app.route('/reset/<url>', methods=["GET", "POST"])
 def resetPassword(url):
+    global user_to_url
     sql = "SELECT TIME_TO_SEC(TIMEDIFF(%s, Time_Created)) FROM password_url WHERE Url = %s"
     val = (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),url)
     tupleCursor.execute(sql, val)
     reset = tupleCursor.fetchone()
-    if reset > 1800:
+    if reset[0] > 600:
         sql = "DELETE FROM password_url WHERE Url=%s"
         val = (url,)
-        flash("Your password reset link has expired, please try again!", "error")
+        flash("Your password reset link has expired, please try again!", "danger")
         return redirect("/home")
     else:
-        return redirect("/home")
+        print("Yes")
+        changePasswordForm = Forms.UpdatePassword(request.form)
+        if request.method == "POST" and changePasswordForm.validate():
+            print(user_to_url)
+            username = user_to_url[url]
+            password_hash = bcrypt.generate_password_hash(changePasswordForm.password.data).decode("utf8")
+            password = password_hash[7:]
+            sql = "UPDATE user SET Password=%s WHERE Username=%s"
+            val = (str(password), username)
+            tupleCursor.execute(sql, val)
+            db.commit()
+            user_to_url.pop(url)
+            flash("Password has been successfully reset",'success')
+            return redirect("/login")
+        return render_template("changePassword.html", changePasswordForm=changePasswordForm)
 
 
 
@@ -925,8 +1003,6 @@ def adminUserProfile(username):
             return redirect('/adminProfile/' + sessionInfo['username'])
 
     if request.method == "POST" and updateUsernameForm.validate():
-        # password_hash = bcrypt.generate_password_hash(updateProfileForm.password.data).decode("utf8")
-        # password = password_hash[7:]
         sql = "UPDATE user "
         sql += "SET Username=%s"
         sql += "WHERE UserID=%s"
@@ -1442,5 +1518,5 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=False)
-    # app.run(debug=True)
+    # app.run(debug=False)
+    app.run(debug=True)

@@ -2,8 +2,8 @@ import mysql.connector
 
 db = mysql.connector.connect(
     host="localhost",
-    user="secureASPJuser",
-    password="P@ssw0rd",
+    user=os.environ["DB_USERNAME"],
+    password=os.environ["DB_PASSWORD"],
     database="secureblogdb"
 )
 

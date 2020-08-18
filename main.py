@@ -334,7 +334,7 @@ def searchPosts():
 @login_required
 def viewPost(postID, sessionId):
     sessionInfo['prevPage']= request.url_rule
-    sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE PostID=%s"
@@ -998,18 +998,20 @@ def adminHome():
 @app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
 @admin_required
 def adminViewPost(postID):
-    sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted,post.TopicID,post.PostID, user.Username, topic.Content AS Topic FROM post"
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted,post.TopicID,post.PostID, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " WHERE PostID=" + str(postID)
-    dictCursor.execute(sql)
+    sql += " WHERE PostID=%s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
-    sql += " WHERE comment.PostID=" + str(postID)
-    dictCursor.execute(sql)
+    sql += " WHERE comment.PostID=%s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
@@ -1170,7 +1172,6 @@ def deletePost(postID):
     return redirect('/adminHome')
 
 @app.route('/adminFeedback')
-@admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
@@ -1225,6 +1226,7 @@ def replyFeedback(feedbackID):
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
 @app.route('/errorLog')
+@admin_required
 def errorLog():
     sql = "SELECT * FROM errorlog ORDER BY datetime DESC"
     dictCursor.execute(sql)
@@ -1280,10 +1282,19 @@ def errorLog():
     return render_template('adminErrorLog.html', currentPage='errorLog', **sessionInfo, log=log, errorGraph=errorGraph)
 
 @app.route('/userActivityLog')
+@admin_required
 def userActivityLog():
     sql = "SELECT * FROM useractivitylog l INNER JOIN useractivitycode c ON c.activityCode=l.activityCode ORDER BY datetime DESC"
     dictCursor.execute(sql)
     log = dictCursor.fetchall()
+
+    suspiciousLog = []
+    sql = "SELECT UserID, username, COUNT(*) count FROM useractivitylog WHERE activityCode=7 GROUP BY UserID, username"
+    dictCursor.execute(sql)
+    suspiciousUsers = dictCursor.fetchall()
+    for user in suspiciousUsers:
+        info = '%s (User ID: %d) tried to access admin page %d times.' %(user['username'], user['UserID'], user['count'])
+        suspiciousLog.append(info)
 
     sql = "SELECT DISTINCT activityCode FROM useractivitylog ORDER BY activityCode DESC"
     dictCursor.execute(sql)
@@ -1342,7 +1353,7 @@ def userActivityLog():
 
     activityGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
 
-    return render_template('adminUserActivityLog.html', currentPage='userActivityLog', **sessionInfo, log=log, activityGraph=activityGraph)
+    return render_template('adminUserActivityLog.html', currentPage='userActivityLog', **sessionInfo, log=log, activityGraph=activityGraph, suspiciousLog=suspiciousLog)
 
 
 @app.errorhandler(400)
@@ -1431,5 +1442,5 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    # app.run(debug=False)
-    app.run(debug=True)
+    app.run(debug=False)
+    # app.run(debug=True)

@@ -1436,7 +1436,8 @@ def error503(e):
 def handle_500(e):
     original = getattr(e, "original_exception", None)
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
-    title = 'Error 501'
+    title = 'Error 500'
+    createLog.log_error(request.path, 500, 'Internal Server Error')
     if original is None:
         # direct 500 error, such as abort(500)
         return render_template("error.html", msg=msg, title = title), 500

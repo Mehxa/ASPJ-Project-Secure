@@ -334,7 +334,7 @@ def searchPosts():
 @login_required
 def viewPost(postID, sessionId):
     sessionInfo['prevPage']= request.url_rule
-    sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE PostID=%s"
@@ -1004,18 +1004,20 @@ def adminHome():
 @app.route('/adminViewPost/<int:postID>', methods=["GET", "POST"])
 @admin_required
 def adminViewPost(postID):
-    sql = "SELECT post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted,post.TopicID,post.PostID, user.Username, topic.Content AS Topic FROM post"
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted,post.TopicID,post.PostID, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " WHERE PostID=" + str(postID)
-    dictCursor.execute(sql)
+    sql += " WHERE PostID=%s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
-    sql += " WHERE comment.PostID=" + str(postID)
-    dictCursor.execute(sql)
+    sql += " WHERE comment.PostID=%s"
+    val = (postID,)
+    dictCursor.execute(sql, val)
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
@@ -1238,6 +1240,7 @@ def replyFeedback(feedbackID):
     return render_template('replyFeedback.html', currentPage='replyFeedback', **sessionInfo,replyForm=replyForm, feedbackList=feedbackList)
 
 @app.route('/errorLog')
+@admin_required
 def errorLog():
     sql = "SELECT * FROM errorlog ORDER BY datetime DESC"
     dictCursor.execute(sql)
@@ -1279,12 +1282,83 @@ def errorLog():
                     , go.Bar(name=401, y=data['401'], x=listOfDates, marker_color='#ffb7b2', offsetgroup=0)
                     ]
 
+    errorGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
+
+    return render_template('adminErrorLog.html', currentPage='errorLog', **sessionInfo, log=log, errorGraph=errorGraph)
+
+@app.route('/userActivityLog')
+@admin_required
+def userActivityLog():
+    sql = "SELECT * FROM useractivitylog l INNER JOIN useractivitycode c ON c.activityCode=l.activityCode ORDER BY datetime DESC"
+    dictCursor.execute(sql)
+    log = dictCursor.fetchall()
+
+    suspiciousLog = []
+    sql = "SELECT UserID, username, COUNT(*) count FROM useractivitylog WHERE activityCode=7 GROUP BY UserID, username"
+    dictCursor.execute(sql)
+    suspiciousUsers = dictCursor.fetchall()
+    for user in suspiciousUsers:
+        info = '%s (User ID: %d) tried to access admin page %d times.' %(user['username'], user['UserID'], user['count'])
+        suspiciousLog.append(info)
+
+    sql = "SELECT DISTINCT activityCode FROM useractivitylog ORDER BY activityCode DESC"
+    dictCursor.execute(sql)
+    distinctAC = dictCursor.fetchall()
+
+    data = {}
+    for code in distinctAC:
+        data[code['activityCode']] = []
+
+    listOfDates = []
+    for x in range(7):
+        dateToCheck = (date.today()-timedelta(x))
+        listOfDates.append(dateToCheck)
+
+        for activity in data:
+            sql = "SELECT COUNT(*) count FROM useractivitylog WHERE DATE(datetime)=%s AND activityCode=%s GROUP BY activityCode;"
+            val = (dateToCheck, activity)
+            dictCursor.execute(sql, val)
+            activityCount = dictCursor.fetchone()
+            if activityCount==None:
+                data[activity].append(0)
+            else:
+                data[activity].append(activityCount['count'])
+
+    markerColor = {
+        1 : '#ffef00'
+        , 2 : '#ffa600'
+        , 3 : '#ff7c43'
+        , 4 : '#f95d6a'
+        , 5 : '#d45087'
+        , 6 : '#a05195'
+        , 7 : '#665191'
+        , 8 : '#2f4b7c'
+        , 9 : '#003f5c'
+    }
+
+    activityName = {
+        1 : 'Sign Up'
+        , 2 : 'Login'
+        , 3 : 'Log Out'
+        , 4 : 'Failed Login'
+        , 5 : 'Account Locked'
+        , 6 : 'Account Reactivated'
+        , 7 : 'Forbidden Access'
+    }
+
+    dataArray = []
+    for activity in data:
+        newBar = go.Bar(name=activityName[activity], y=data[activity], x=listOfDates, marker_color=markerColor[activity], offsetgroup=0)
+        dataArray.append(newBar)
+
+    graph = {
+            'data': dataArray
             , 'layout': {}
             }
 
-    errorGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
+    activityGraph = json.dumps(graph, cls=plotly.utils.PlotlyJSONEncoder)
 
-    return render_template('adminLog.html', currentPage='errorLog', **sessionInfo, log=log, errorGraph=errorGraph)
+    return render_template('adminUserActivityLog.html', currentPage='userActivityLog', **sessionInfo, log=log, activityGraph=activityGraph, suspiciousLog=suspiciousLog)
 
 @app.errorhandler(400)
 def error400(e):

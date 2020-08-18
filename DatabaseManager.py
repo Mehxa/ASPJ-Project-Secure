@@ -14,7 +14,6 @@ dictCursor = db.cursor(buffered=True, dictionary=True)
 def insert_post_vote(userID, postID, vote):
     sql = 'INSERT INTO post_votes (UserID, PostID, Vote) VALUES (%s, %s, %s)'
     val = (userID, postID, vote)
-    print('>>>>>>>>>>>>>>', userID, postID, vote)
     tupleCursor.execute(sql, val)
     db.commit()
 

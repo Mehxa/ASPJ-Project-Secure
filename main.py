@@ -491,7 +491,7 @@ def login():
                             msg = Message("Lorem Ipsum",
                                 sender="deloremipsumonlinestore@outlook.com",
                                 recipients=[email])
-                            url = '/reactivate/' + secret
+                            url = 'http://127.0.0.1:5000/reactivate/' + secret
                             msg.body = "Your account has been locked"
                             msg.html = render_template('email.html', postID="account locked", username=findUser['Username'], content=0, posted=0, reply=0, url=url)
                             mail.send(msg)
@@ -558,27 +558,40 @@ def reactivate(secret):
             current=current[0]
             val = (str(current), str(findSecret['DateIssued']))
             tupleCursor.execute(sql,val)
+            print("HIHIHIH10")
             timePassed = tupleCursor.fetchone()
+
             if int(timePassed) > 168:
-                flash("This link has expired. Attempt login to receive another reactivation link.")
-                return render_template('reactivate.html')
+            # print('HI')
+            # if 1> 0:
+                sql = "DELETE FROM reactivate WHERE Secret=%s"
+                val = (secret,)
+                tupleCursor.execute(sql,val)
+                db.commit()
+                sql = "DELETE FROM user WHERE UserID=%s"
+                val = findSecret['UserID']
+                tupleCursor.execute(sql,val)
+                db.commit()
+                flash("The reactivation period is over. Your account has been deleted.")
+                return redirect('/home')
             else:
                 sql = "SELECT r.UserID UserID, Username FROM reactivate r INNER JOIN user u ON r.UserID=u.UserID WHERE r.Secret=%s"
                 val = (secret,)
-                user = dictCursor.exectue(sql,val)
+                user = dictCursor.execute(sql,val)
                 createLog.log_user_activity(user['UserID'], findUser['Username'], 6)
                 sql = "UPDATE user"
                 sql += " SET Active=%s"
-                sql += " ,LoginAttempts=%s"
+                sql += " , LoginAttempts=%s"
                 sql += " WHERE UserID=("
                 sql += " SELECT UserID FROM reactivate"
                 sql += " WHERE reactivate.Secret=%s)"
-                val = (str(1),0,secret)
-                tupleCursor.exectue(sql,val)
+                val = (1, 0, secret)
+                tupleCursor.execute(sql,val)
                 db.commit()
+
                 sql = "DELETE FROM reactivate WHERE Secret=%s"
                 val = (secret,)
-                tupleCursor.exectue(sql,val)
+                tupleCursor.execute(sql,val)
                 db.commit()
                 return render_template('home.html')
         except:

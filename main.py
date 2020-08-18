@@ -575,7 +575,6 @@ def reactivate(secret):
                 flash("The reactivation period is over. Your account has been deleted.")
                 return redirect('/home')
             else:
-                print("reactivating")
                 sql = "SELECT r.UserID UserID, Username FROM reactivate r INNER JOIN user u ON r.UserID=u.UserID WHERE r.Secret=%s"
                 val = (secret,)
                 user = dictCursor.execute(sql,val)
@@ -1456,5 +1455,5 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    # app.run(debug=False)
-    app.run(debug=True)
+    app.run(debug=False)
+    # app.run(debug=True)

@@ -198,6 +198,69 @@ def postVote():
     return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
     , 'newVote': newVote, 'updatedVoteTotal': updatedVoteTotal, 'postID': data['postID']}), 200)
 
+@app.route('/commentVote', methods=["GET", "POST"])
+def commentVote():
+    if not sessionInfo['login']:
+        flash('You must be logged in to vote.', 'warning')
+        return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
+
+    data = request.get_json(force=True)
+    print(data)
+    currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), data['commentID'])
+
+    if currentVote==None:
+        if data['voteValue']=='1':
+            toggleUpvote = True
+            toggleDownvote = False
+            newVote = 1
+            upvoteChange = '+1'
+            downvoteChange = '0'
+        else:
+            toggleUpvote = False
+            toggleDownvote = True
+            newVote = -1
+            upvoteChange = '0'
+            downvoteChange = '+1'
+
+        DatabaseManager.insert_comment_vote(str(sessionInfo['currentUserID']), data['commentID'], data['voteValue'])
+
+    else: # If vote for post exists
+        if currentVote['Vote']==1:
+            upvoteChange = '-1'
+            if data['voteValue']=='1':
+                toggleUpvote = True
+                toggleDownvote = False
+                newVote = 0
+                downvoteChange = '0'
+            else:
+                toggleUpvote = True
+                toggleDownvote = True
+                newVote = -1
+                downvoteChange = '+1'
+
+        else: # currentVote['Vote']==-1
+            downvoteChange = '-1'
+            if data['voteValue']=='1':
+                toggleUpvote = True
+                toggleDownvote = True
+                newVote = 1
+                upvoteChange = '+1'
+            else:
+                toggleUpvote = False
+                toggleDownvote = True
+                newVote = 0
+                upvoteChange = '0'
+
+        if newVote==0:
+            DatabaseManager.delete_comment_vote(str(sessionInfo['currentUserID']), data['commentID'])
+        else:
+            DatabaseManager.update_comment_vote(str(newVote), str(sessionInfo['currentUserID']), data['commentID'])
+
+    DatabaseManager.update_overall_comment_vote(upvoteChange, downvoteChange, data['commentID'])
+    updatedCommentTotal = DatabaseManager.calculate_updated_comment_votes(data['commentID'])
+    return make_response(jsonify({'toggleUpvote': toggleUpvote, 'toggleDownvote': toggleDownvote
+    , 'newVote': newVote, 'updatedCommentTotal': updatedCommentTotal, 'commentID': data['commentID']}), 200)
+
 @app.route('/')
 def main():
     return redirect("/home")

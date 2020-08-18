@@ -8,7 +8,6 @@
 
 {% block content %}
 {% from "includes/_formhelper.html" import render_field, render_field_no_label %}
-{% autoescape false %}
 <div class="container my-4">
   <div class="row justify-content-center">
     <div class="col-md-10">
@@ -107,7 +106,6 @@
 </div> <!--Container-->
 
 
-{% endautoescape %}
 <div class="modal fade" id="replyModal" tabindex="-1" role="dialog" aria-labelledby="replyModal" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">

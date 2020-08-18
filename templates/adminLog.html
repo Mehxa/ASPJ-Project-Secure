@@ -2,6 +2,10 @@
 {% block title %}Log{% endblock %}
 
 {% block style %}
+<!--Plotly-->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+
 <link rel="stylesheet" href="/static/styles/home.css">
 
 <style>
@@ -24,36 +28,51 @@ tbody tr:hover td {
 
 {% block content %}
 
-<div class="container my-4">
+<div class="container-fluid my-4">
   <div class="row justify-content-center">
-    <div class="col-md-11">
-      <h1 class="mb-4">Log</h1>
+    <div class="col-md-11 row">
+      <h1 class="mb-4 ml-2">Error Log</h1>
+    </div>
 
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>DateTime</th>
-              <th>Route</th>
-              <th>Error Code</th>
-              <th>Details</th>
-            </tr>
-          </thead>
+    <div class="col-md-11 row">
+      <div class="col-md-5">
+        <div class="sticky-top">
+          <div id="errorGraph"></div>
+          <script>
+            var errorData = {{errorGraph | safe}};
+            errorData.layout = {xaxis: {dtick: 86400000.0}, height: 600, barmode: 'stack'};
+            var chart = Plotly.newPlot("errorGraph", errorData.data, errorData.layout, {responsive: true, displayModeBar:false});
+          </script>
+        </div> <!--Sticky-->
+      </div> <!--Col-->
 
-          <tbody>
-            {% for error in log %}
+      <div class="col-md-7">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>DateTime</th>
+                <th>Route</th>
+                <th>Error Code</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for error in log %}
               <tr>
                 <td>{{ error.datetime }}</td>
                 <td>{{ error.route }}</td>
                 <td>{{ error.errorCode }}</td>
                 <td>{{ error.details }}</td>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div> <!--Table-->
+      </div> <!--Col-->
 
-    </div> <!--Col-->
+    </div> <!--Main Col, Sub row-->
   </div> <!--Row-->
 </div> <!--Container-->
 

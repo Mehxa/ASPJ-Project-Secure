@@ -78,9 +78,6 @@ sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
 
-# captcha_key = '6LdgFLYZAAAAAC9nKyG3lnmsuVvp7Bh2xB673dSF'
-# capthca_secret = '6LdgFLYZAAAAALldW3bMk_5COICxWAKHe2QFJrGd'
-
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)
     def wrap(*args, **kwargs):
@@ -98,8 +95,6 @@ def admin_required(function_to_wrap):
             if sessionInfo['isAdmin']==1:
                 return function_to_wrap(*args, **kwargs)
             else:
-                createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
-                createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
                 abort(403)
         else:
             abort(401)
@@ -259,7 +254,7 @@ def home():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
@@ -737,7 +732,7 @@ def profile(username, sessionId):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.DatetimePosted DESC"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -958,7 +953,7 @@ def adminUserProfile(username):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.DatetimePosted DESC"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -1056,7 +1051,7 @@ def adminHome():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username,topic.TopicID, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
@@ -1243,6 +1238,7 @@ def deletePost(postID):
     return redirect('/adminHome')
 
 @app.route('/adminFeedback')
+@admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
@@ -1445,6 +1441,8 @@ def error401(e):
 def error403(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Erorr 403'
+    createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
+    createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(404)

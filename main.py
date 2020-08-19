@@ -277,7 +277,7 @@ def home():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
@@ -755,7 +755,7 @@ def profile(username, sessionId):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.DatetimePosted DESC"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -976,7 +976,7 @@ def adminUserProfile(username):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.DatetimePosted DESC"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -1074,7 +1074,7 @@ def adminHome():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username,topic.TopicID, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()

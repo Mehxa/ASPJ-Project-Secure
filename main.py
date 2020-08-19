@@ -74,30 +74,9 @@ global sessionID
 sessionID = 0
 sessions={}
 sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
-# Password: NotABot123
-# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
-# Password: CoffeeGirl123
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
-# Password: Mehxa123
-# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
-# Password: Kobot123
-# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
-# Password: MaryTan123
-# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
-# Password: nuts@coco
-# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
-# Password: hohohomerrychristmas
-# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
-# Password: iaminevitable
-# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
-# Password: burgerking02
 sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
-
-# captcha_key = '6LdgFLYZAAAAAC9nKyG3lnmsuVvp7Bh2xB673dSF'
-# capthca_secret = '6LdgFLYZAAAAALldW3bMk_5COICxWAKHe2QFJrGd'
 
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)
@@ -116,8 +95,6 @@ def admin_required(function_to_wrap):
             if sessionInfo['isAdmin']==1:
                 return function_to_wrap(*args, **kwargs)
             else:
-                createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
-                createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
                 abort(403)
         else:
             abort(401)
@@ -1464,6 +1441,8 @@ def error401(e):
 def error403(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Erorr 403'
+    createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
+    createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(404)
@@ -1532,5 +1511,5 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    # app.run(debug=False)
-    app.run(debug=True)
+    app.run(debug=False)
+    # app.run(debug=True)

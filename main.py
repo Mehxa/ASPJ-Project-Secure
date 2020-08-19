@@ -74,24 +74,6 @@ global sessionID
 sessionID = 0
 sessions={}
 sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
-# Password: NotABot123
-# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
-# Password: CoffeeGirl123
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
-# Password: Mehxa123
-# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
-# Password: Kobot123
-# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
-# Password: MaryTan123
-# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
-# Password: nuts@coco
-# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
-# Password: hohohomerrychristmas
-# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
-# Password: iaminevitable
-# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
-# Password: burgerking02
 sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
@@ -1531,5 +1513,6 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    # app.run(debug=False)
-    app.run(debug=True)
+    context = ('ASPJ.crt', 'ASPJ.key')
+    app.run(debug=False, ssl_context=context)
+    # app.run(debug=True)

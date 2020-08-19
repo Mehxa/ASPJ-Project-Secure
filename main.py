@@ -1261,6 +1261,7 @@ def deletePost(postID):
     return redirect('/adminHome')
 
 @app.route('/adminFeedback')
+@admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "

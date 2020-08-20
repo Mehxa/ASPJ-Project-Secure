@@ -77,3 +77,6 @@ class TopicForm(Form):
 
 class OTPForm(Form):
     otp = StringField('OTP', [validators.DataRequired()])
+
+class ReactivateForm(Form):
+    reason = SelectField('Why was your account locked?',[validators.DataRequired()], choices=[(1,"This wasn't me"), (2,'I forgot my password.'), (3,'I exceeded the maximum number of login attempts')], coerce=int)

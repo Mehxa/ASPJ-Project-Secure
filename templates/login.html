@@ -23,7 +23,9 @@
         <div class="form-group">
           {{render_field(loginForm.password, class= "form-control")}}
         </div>
-
+{%if resend%}
+  <a href="/resendReactivate/{{currentUserID}}"><button type="button" class="button">Resend reactivation link</button></a>
+{%endif%}
           <div class="g-recaptcha" data-sitekey={{sitekey}}>
 
         </div>

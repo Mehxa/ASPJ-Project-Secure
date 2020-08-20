@@ -68,13 +68,36 @@ app.config['RECAPTCHA_PRIVATE_KEY'] = '6LdVRrYZAAAAAM-F0Ur8eLAgwjvp3OqpZwAhQHby'
 
 mail = Mail(app)
 bcrypt = Bcrypt(app)
+""" For testing purposes only. To make it convenient cause I can't remember all the account names.
+Uncomment the account that you would like to use. To run the program as not logged in, run the first one."""
 global sessionID
 sessionID = 0
 sessions={}
 sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
+# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
+# Password: NotABot123
+# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
+# Password: CoffeeGirl123
+# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
+# Password: Mehxa123
+# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
+# Password: Kobot123
+# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
+# Password: MaryTan123
+# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
+# Password: nuts@coco
+# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
+# Password: hohohomerrychristmas
+# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
+# Password: iaminevitable
+# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
+# Password: burgerking02
 sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
+
+# captcha_key = '6LdgFLYZAAAAAC9nKyG3lnmsuVvp7Bh2xB673dSF'
+# capthca_secret = '6LdgFLYZAAAAALldW3bMk_5COICxWAKHe2QFJrGd'
 
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)
@@ -93,6 +116,8 @@ def admin_required(function_to_wrap):
             if sessionInfo['isAdmin']==1:
                 return function_to_wrap(*args, **kwargs)
             else:
+                createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
+                createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
                 abort(403)
         else:
             abort(401)
@@ -118,7 +143,7 @@ def postVote():
         return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
 
     data = request.get_json(force=True)
-    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), data['postID'])
+    currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), data['postID'])
 
     if currentVote==None:
         if data['voteValue']=='1':
@@ -252,13 +277,13 @@ def home():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
         if sessionInfo['login']:
-            currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+            currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
             if currentVote==None:
                 post['UserVote'] = 0
             else:
@@ -317,11 +342,6 @@ def viewPost(postID, sessionId):
     dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
-    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
-    if currentVote==None:
-        post['UserVote'] = 0
-    else:
-        post['UserVote'] = currentVote['Vote']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
@@ -331,12 +351,6 @@ def viewPost(postID, sessionId):
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
-
-        currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), str(comment['CommentID']))
-        if currentVote==None:
-            comment['UserVote'] = 0
-        else:
-            comment['UserVote'] = currentVote['Vote']
 
         sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
         sql += " INNER JOIN user ON reply.UserID=user.UserID"
@@ -426,6 +440,7 @@ def login():
     global invalid_login_count
     sitekey = '6LdVRrYZAAAAAMn5_QZZrsMfqEG8KmC7nhPwu8X1'
     global sessionID
+    resend =0
     loginForm = Forms.LoginForm(request.form)
     if request.method == 'POST' and loginForm.validate():
         sql = "SELECT UserID, Username, Password, Active, LoginAttempts, Email FROM user WHERE Username=%s"
@@ -439,7 +454,9 @@ def login():
         else:
             secret = secrets.token_urlsafe(16)
             if findUser['Active'] == 0:
+                resend = 1
                 loginForm.password.errors.append('Your account has been locked')
+
             else:
                 password = findUser["Password"]
                 password = "$2b$12$" + password
@@ -464,12 +481,12 @@ def login():
                         tupleCursor.execute(sql, val)
                         db.commit()
                         sql = "INSERT into reactivate"
-                        sql += " VALUES (%s,%s,%s,%s)"
+                        sql += " VALUES (%s,%s,%s)"
                         current = "SELECT NOW()"
                         tupleCursor.execute(current)
                         current = tupleCursor.fetchone()
                         current=current[0]
-                        val = (secret, str(current), '168:00:00', findUser["UserID"])
+                        val = (secret, str(current), findUser["UserID"])
                         tupleCursor.execute(sql, val)
                         db.commit()
                         try:
@@ -526,64 +543,113 @@ def login():
 
                     return redirect('/home') # Change this later to redirect to profile page
 
-    return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey, invalid_login_count=invalid_login_count)
+    return render_template('login.html', currentPage='login', **sessionInfo, loginForm = loginForm, sitekey=sitekey, invalid_login_count=invalid_login_count, resend=resend)
 
 @app.route('/reactivate/<secret>',methods=["GET", "POST"])
 def reactivate(secret):
-    if request.method == 'POST':
+    reactivateForm = Forms.ReactivateForm(request.form)
+    if request.method == 'POST' and reactivateForm.validate():
         try:
             sql = " SELECT * FROM reactivate"
             sql += " WHERE Secret=%s"
             val = (secret,)
             tupleCursor.execute(sql,val)
             findSecret = tupleCursor.fetchone()
-            sql = "SELECT HOUR(TIMEDIFF(%s,%s))"
-            current = "SELECT NOW()"
-            tupleCursor.execute(current)
-            current = tupleCursor.fetchone()
-            current=current[0]
-            val = (str(current), str(findSecret['DateIssued']))
+            # sql = "SELECT HOUR(TIMEDIFF(%s,%s))"
+            # current = "SELECT NOW()"
+            # tupleCursor.execute(current)
+            # current = tupleCursor.fetchone()
+            # current=current[0]
+            # val = (str(current), str(findSecret['DateIssued']))
+            # tupleCursor.execute(sql,val)
+            # print("HIHIHIH10")
+            # timePassed = tupleCursor.fetchone()
+
+            # if int(timePassed) > 168:
+            # # print('HI')
+            # # if 1> 0:
+            #     sql = "DELETE FROM reactivate WHERE Secret=%s"
+            #     val = (secret,)
+            #     tupleCursor.execute(sql,val)
+            #     db.commit()
+            #     sql = "DELETE FROM user WHERE UserID=%s"
+            #     val = findSecret['UserID']
+            #     tupleCursor.execute(sql,val)
+            #     db.commit()
+            #     flash("The reactivation period is over. Your account has been deleted.")
+            #     return redirect('/home')
+            # else:
+            sql = "SELECT r.UserID, Username FROM reactivate r INNER JOIN user u ON r.UserID=u.UserID WHERE r.Secret=%s"
+            val = (secret,)
+            dictCursor.execute(sql,val)
+            user = dictCursor.fetchone()
+            # print("HIIIIIIIIIIIIIIi")
+            createLog.log_user_activity(user['UserID'], user['Username'], 6)
+            print("HIIIIIIIIIIIIIIi")
+            sql = "UPDATE user"
+            sql += " SET Active=%s"
+            sql += " , LoginAttempts=%s"
+            sql += " WHERE UserID=("
+            sql += " SELECT UserID FROM reactivate"
+            sql += " WHERE reactivate.Secret=%s)"
+            val = (1, 0, secret)
             tupleCursor.execute(sql,val)
-            print("HIHIHIH10")
-            timePassed = tupleCursor.fetchone()
+            db.commit()
 
-            if int(timePassed) > 168:
-            # print('HI')
-            # if 1> 0:
-                sql = "DELETE FROM reactivate WHERE Secret=%s"
-                val = (secret,)
-                tupleCursor.execute(sql,val)
-                db.commit()
-                sql = "DELETE FROM user WHERE UserID=%s"
-                val = findSecret['UserID']
-                tupleCursor.execute(sql,val)
-                db.commit()
-                flash("The reactivation period is over. Your account has been deleted.")
-                return redirect('/home')
-            else:
-                sql = "SELECT r.UserID UserID, Username FROM reactivate r INNER JOIN user u ON r.UserID=u.UserID WHERE r.Secret=%s"
-                val = (secret,)
-                user = dictCursor.execute(sql,val)
-                createLog.log_user_activity(user['UserID'], findUser['Username'], 6)
-                sql = "UPDATE user"
-                sql += " SET Active=%s"
-                sql += " , LoginAttempts=%s"
-                sql += " WHERE UserID=("
-                sql += " SELECT UserID FROM reactivate"
-                sql += " WHERE reactivate.Secret=%s)"
-                val = (1, 0, secret)
-                tupleCursor.execute(sql,val)
-                db.commit()
-
-                sql = "DELETE FROM reactivate WHERE Secret=%s"
-                val = (secret,)
-                tupleCursor.execute(sql,val)
-                db.commit()
-                return render_template('home.html')
+            sql = "DELETE FROM reactivate WHERE Secret=%s"
+            val = (secret,)
+            tupleCursor.execute(sql,val)
+            db.commit()
+            return redirect('/home')
         except:
             flash("Invalid link")
 
-    return render_template('reactivate.html')
+    return render_template('reactivate.html', reactivateForm=reactivateForm)
+
+@app.route('/resendReactivate/<userId>')
+def resendReactivate(userId):
+        # get user email, previous secret
+        print("im here")
+        print(userId)
+        sql = "SELECT Email, Username, Secret FROM user"
+        sql += " INNER JOIN reactivate ON user.UserID=reactivate.UserID"
+        sql += " WHERE user.UserID=%s"
+        val = (userId,)
+        dictCursor.execute(sql,val)
+        user = dictCursor.fetchone()
+        print(user)
+        # delete secret
+        sql = "DELETE from reactivate WHERE UserID=%s"
+        val = (userId,)
+        tupleCursor.execute(sql,val)
+        db.commit()
+        secret = secrets.token_urlsafe(16)
+        sql = "INSERT into reactivate"
+        sql += " VALUES (%s,%s,%s)"
+        current = "SELECT NOW()"
+        tupleCursor.execute(current)
+        current = tupleCursor.fetchone()
+        current=current[0]
+        val = (secret, str(current), userId)
+        tupleCursor.execute(sql, val)
+        db.commit()
+        # send email
+        try:
+            email = user["Email"]
+            print(email)
+            msg = Message("Lorem Ipsum",
+                sender="deloremipsumonlinestore@outlook.com",
+                recipients=[email])
+            url = 'http://127.0.0.1:5000/reactivate/' + secret
+            msg.body = "Your account has been locked"
+            msg.html = render_template('email.html', postID="account locked", username=user['Username'], content=0, posted=0, reply=0, url=url)
+            mail.send(msg)
+        except Exception as e:
+            print(e)
+            print("Error:", sys.exc_info()[0])
+            print("goes into except")
+
+        return redirect('/login')
 
 @app.route('/logout')
 @login_required
@@ -741,7 +807,7 @@ def profile(username, sessionId):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.DatetimePosted DESC"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -962,7 +1028,7 @@ def adminUserProfile(username):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.DatetimePosted DESC"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -1060,16 +1126,11 @@ def adminHome():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username,topic.TopicID, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
+    sql += " ORDER BY post.PostID DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
-        currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
-        if currentVote==None:
-            post['UserVote'] = 0
-        else:
-            post['UserVote'] = currentVote['Vote']
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
 
@@ -1086,11 +1147,6 @@ def adminViewPost(postID):
     dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
-    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
-    if currentVote==None:
-        post['UserVote'] = 0
-    else:
-        post['UserVote'] = currentVote['Vote']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
@@ -1100,12 +1156,6 @@ def adminViewPost(postID):
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
-
-        currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), str(comment['CommentID']))
-        if currentVote==None:
-            comment['UserVote'] = 0
-        else:
-            comment['UserVote'] = currentVote['Vote']
 
         sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
         sql += " INNER JOIN user ON reply.UserID=user.UserID"
@@ -1263,7 +1313,6 @@ def deletePost(postID):
     return redirect('/adminHome')
 
 @app.route('/adminFeedback')
-@admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
@@ -1466,8 +1515,6 @@ def error401(e):
 def error403(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Erorr 403'
-    createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
-    createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(404)
@@ -1536,5 +1583,5 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    context = ('ASPJ.crt', 'ASPJ.key')
-    app.run(debug=False, ssl_context=context)
+    # app.run(debug=False)
+    app.run(debug=True)

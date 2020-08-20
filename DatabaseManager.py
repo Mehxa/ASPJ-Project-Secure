@@ -50,7 +50,7 @@ def calculate_updated_post_votes(postID):
     db.commit()
     return postVotes['Upvotes'] - postVotes['Downvotes']
 
-def get_user_vote(userID, postID):
+def get_user_post_vote(userID, postID):
     sql = "SELECT Vote FROM post_votes WHERE "
     sql += " UserID = %s"
     sql += " AND PostID = %s"

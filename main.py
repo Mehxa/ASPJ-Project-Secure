@@ -68,8 +68,6 @@ app.config['RECAPTCHA_PRIVATE_KEY'] = '6LdVRrYZAAAAAM-F0Ur8eLAgwjvp3OqpZwAhQHby'
 
 mail = Mail(app)
 bcrypt = Bcrypt(app)
-""" For testing purposes only. To make it convenient cause I can't remember all the account names.
-Uncomment the account that you would like to use. To run the program as not logged in, run the first one."""
 global sessionID
 sessionID = 0
 sessions={}
@@ -120,7 +118,7 @@ def postVote():
         return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
 
     data = request.get_json(force=True)
-    currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), data['postID'])
+    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), data['postID'])
 
     if currentVote==None:
         if data['voteValue']=='1':
@@ -260,7 +258,7 @@ def home():
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
         if sessionInfo['login']:
-            currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+            currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
             if currentVote==None:
                 post['UserVote'] = 0
             else:
@@ -319,6 +317,11 @@ def viewPost(postID, sessionId):
     dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
+    if currentVote==None:
+        post['UserVote'] = 0
+    else:
+        post['UserVote'] = currentVote['Vote']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
@@ -328,6 +331,12 @@ def viewPost(postID, sessionId):
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
+
+        currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), str(comment['CommentID']))
+        if currentVote==None:
+            comment['UserVote'] = 0
+        else:
+            comment['UserVote'] = currentVote['Vote']
 
         sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
         sql += " INNER JOIN user ON reply.UserID=user.UserID"
@@ -1056,6 +1065,11 @@ def adminHome():
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
+        currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+        if currentVote==None:
+            post['UserVote'] = 0
+        else:
+            post['UserVote'] = currentVote['Vote']
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
 
@@ -1072,6 +1086,11 @@ def adminViewPost(postID):
     dictCursor.execute(sql, val)
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
+    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
+    if currentVote==None:
+        post['UserVote'] = 0
+    else:
+        post['UserVote'] = currentVote['Vote']
 
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
@@ -1081,6 +1100,12 @@ def adminViewPost(postID):
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
+
+        currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), str(comment['CommentID']))
+        if currentVote==None:
+            comment['UserVote'] = 0
+        else:
+            comment['UserVote'] = currentVote['Vote']
 
         sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
         sql += " INNER JOIN user ON reply.UserID=user.UserID"
@@ -1513,4 +1538,3 @@ def after_request(response):
 if __name__ == "__main__":
     context = ('ASPJ.crt', 'ASPJ.key')
     app.run(debug=False, ssl_context=context)
-    # app.run(debug=True)

@@ -254,7 +254,7 @@ def home():
     if request.method == 'POST' and searchBarForm.validate():
         return redirect(url_for('searchPosts', searchQuery = searchBarForm.searchQuery.data, topic = searchBarForm.topic.data))
 
-    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
+    sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic, topic.TopicID FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
@@ -262,14 +262,8 @@ def home():
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
-        currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
-        if currentVote==None:
-            post['UserVote'] = 0
-        else:
-            post['UserVote'] = currentVote['Vote']
-
         if sessionInfo['login']:
-            currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+            currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
             if currentVote==None:
                 post['UserVote'] = 0
             else:
@@ -446,7 +440,7 @@ def login():
         dictCursor.execute(sql, val)
         findUser = dictCursor.fetchone()
         if findUser == None:
-            loginForm.password.errors.append('Wrong email or password.')
+            loginForm.password.errors.append('Wrong username or password.')
             createLog.log_user_activity(None, loginForm.username.data, 4)
             invalid_login_count += 1
         else:
@@ -509,7 +503,7 @@ def login():
                         loginForm.password.errors.append("Your account has been locked due to multiple failed login attempts. Check your email to reactivate your account.")
                         #send email
                     else:
-                        loginForm.password.errors.append('Wrong email or password.')
+                        loginForm.password.errors.append('Wrong username or password.')
                 else:
                     captcha_response = request.form['g-recaptcha-response']
                     if not is_human(captcha_response):
@@ -992,8 +986,8 @@ def topics():
     listOfTopics = tupleCursor.fetchall()
     return render_template('topics.html', currentPage='topics', **sessionInfo, listOfTopics=listOfTopics)
 
-@app.route('/indivTopic/<topicID>/<sessionId>', methods=["GET", "POST"])
-def indivTopic(topicID, sessionId):
+@app.route('/indivTopic/<topicID>', methods=["GET", "POST"])
+def indivTopic(topicID):
     sessionInfo = sessions[sessionID]
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
@@ -1601,4 +1595,4 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)

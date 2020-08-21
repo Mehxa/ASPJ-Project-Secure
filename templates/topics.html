@@ -48,7 +48,7 @@
             {% for topic in listOfTopics %}
             <div class="col-md-6">
               {%if login%}
-              <a href="/indivTopic/{{topic[1]}}/{{sessionID}}"><p class="font-weight-bold" style="color:black">{{topic[0]}}</p></a>
+              <a href="/indivTopic/{{topic[1]}}"><p class="font-weight-bold" style="color:black">{{topic[0]}}</p></a>
               {%else%}
               <a href="/login"><p class="font-weight-bold" style="color:black">{{topic[0]}}</p></a>
               {%endif%}

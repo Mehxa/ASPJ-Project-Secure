@@ -1583,5 +1583,6 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    # app.run(debug=False)
-    app.run(debug=True)
+    ssl_context = ('server.crt', 'server.key')
+    app.run(debug=False, ssl_context=ssl_context)
+    # app.run(debug=True)

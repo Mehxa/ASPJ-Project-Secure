@@ -74,30 +74,10 @@ global sessionID
 sessionID = 0
 sessions={}
 sessionInfo = {'login': False, 'currentUserID': 0, 'username': '', 'isAdmin': 0}
-# sessionInfo = {'login': True, 'currentUserID': 1, 'username': 'NotABot', 'isAdmin': 1}
-# Password: NotABot123
-# sessionInfo = {'login': True, 'currentUserID': 2, 'username': 'CoffeeGirl', 'isAdmin': 1}
-# Password: CoffeeGirl123
-# sessionInfo = {'login': True, 'currentUserID': 3, 'username': 'Mehxa', 'isAdmin': 1}
-# Password: Mehxa123
-# sessionInfo = {'login': True, 'currentUserID': 4, 'username': 'Kobot', 'isAdmin': 1}
-# Password: Kobot123
-# sessionInfo = {'login': True, 'currentUserID': 5, 'username': 'MarySinceBirthButStillSingle', 'isAdmin': 0}
-# Password: MaryTan123
-# sessionInfo = {'login': True, 'currentUserID': 6, 'username': 'theauthenticcoconut', 'isAdmin': 0}
-# Password: nuts@coco
-# sessionInfo = {'login': True, 'currentUserID': 7, 'username': 'johnnyjohnny', 'isAdmin': 0}
-# Password: hohohomerrychristmas
-# sessionInfo = {'login': True, 'currentUserID': 8, 'username': 'iamjeff', 'isAdmin': 0}
-# Password: iaminevitable
-# sessionInfo = {'login': True, 'currentUserID': 9, 'username': 'hanbaobao', 'isAdmin': 0}
-# Password: burgerking02
+
 sessionID += 1
 sessionInfo['sessionID'] = sessionID
 sessions[sessionID] = sessionInfo
-
-# captcha_key = '6LdgFLYZAAAAAC9nKyG3lnmsuVvp7Bh2xB673dSF'
-# capthca_secret = '6LdgFLYZAAAAALldW3bMk_5COICxWAKHe2QFJrGd'
 
 def login_required(function_to_wrap):
     @wraps(function_to_wrap)
@@ -116,8 +96,6 @@ def admin_required(function_to_wrap):
             if sessionInfo['isAdmin']==1:
                 return function_to_wrap(*args, **kwargs)
             else:
-                createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
-                createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
                 abort(403)
         else:
             abort(401)
@@ -137,13 +115,14 @@ def get_all_topics(option):
 
 
 @app.route('/postVote', methods=["GET", "POST"])
+@login_required
 def postVote():
     if not sessionInfo['login']:
         flash('You must be logged in to vote.', 'warning')
         return make_response(jsonify({'message': 'Please log in to vote.'}), 401)
 
     data = request.get_json(force=True)
-    currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), data['postID'])
+    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), data['postID'])
 
     if currentVote==None:
         if data['voteValue']=='1':
@@ -199,6 +178,7 @@ def postVote():
     , 'newVote': newVote, 'updatedVoteTotal': updatedVoteTotal, 'postID': data['postID']}), 200)
 
 @app.route('/commentVote', methods=["GET", "POST"])
+@login_required
 def commentVote():
     if not sessionInfo['login']:
         flash('You must be logged in to vote.', 'warning')
@@ -277,11 +257,17 @@ def home():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
+        currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
+        if currentVote==None:
+            post['UserVote'] = 0
+        else:
+            post['UserVote'] = currentVote['Vote']
+
         if sessionInfo['login']:
             currentVote = DatabaseManager.get_user_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
             if currentVote==None:
@@ -343,6 +329,12 @@ def viewPost(postID, sessionId):
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
 
+    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
+    if currentVote==None:
+        post['UserVote'] = 0
+    else:
+        post['UserVote'] = currentVote['Vote']
+
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
     sql += " WHERE comment.PostID=%s"
@@ -351,6 +343,12 @@ def viewPost(postID, sessionId):
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
+
+        currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), str(comment['CommentID']))
+        if currentVote==None:
+            comment['UserVote'] = 0
+        else:
+            comment['UserVote'] = currentVote['Vote']
 
         sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
         sql += " INNER JOIN user ON reply.UserID=user.UserID"
@@ -807,7 +805,7 @@ def profile(username, sessionId):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.DatetimePosted DESC"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -922,6 +920,7 @@ def profile(username, sessionId):
 
 user_to_url = {}
 @app.route('/changePassword/<username>', methods=["GET"])
+@login_required
 def changePassword(username):
     global user_to_url
     url = secrets.token_urlsafe()
@@ -1028,7 +1027,7 @@ def adminUserProfile(username):
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
     sql += " WHERE user.Username=%s"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.DatetimePosted DESC"
     val = (str(username),)
     dictCursor.execute(sql, val)
     recentPosts = dictCursor.fetchall()
@@ -1126,11 +1125,17 @@ def adminHome():
     sql = "SELECT post.PostID, post.Title, post.Content, post.Upvotes, post.Downvotes, post.DatetimePosted, user.Username,topic.TopicID, topic.Content AS Topic FROM post"
     sql += " INNER JOIN user ON post.UserID=user.UserID"
     sql += " INNER JOIN topic ON post.TopicID=topic.TopicID"
-    sql += " ORDER BY post.PostID DESC LIMIT 6"
+    sql += " ORDER BY post.Upvotes-post.Downvotes DESC LIMIT 6"
 
     dictCursor.execute(sql)
     recentPosts = dictCursor.fetchall()
     for post in recentPosts:
+        currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(post['PostID']))
+        if currentVote==None:
+            post['UserVote'] = 0
+        else:
+            post['UserVote'] = currentVote['Vote']
+
         post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
         post['Content'] = post['Content'][:200]
 
@@ -1148,6 +1153,12 @@ def adminViewPost(postID):
     post = dictCursor.fetchone()
     post['TotalVotes'] = post['Upvotes'] - post['Downvotes']
 
+    currentVote = DatabaseManager.get_user_post_vote(str(sessionInfo['currentUserID']), str(postID))
+    if currentVote==None:
+        post['UserVote'] = 0
+    else:
+        post['UserVote'] = currentVote['Vote']
+
     sql = "SELECT comment.CommentID, comment.Content, comment.DatetimePosted, comment.Upvotes, comment.Downvotes, comment.DatetimePosted, user.Username FROM comment"
     sql += " INNER JOIN user ON comment.UserID=user.UserID"
     sql += " WHERE comment.PostID=%s"
@@ -1156,6 +1167,12 @@ def adminViewPost(postID):
     commentList = dictCursor.fetchall()
     for comment in commentList:
         comment['TotalVotes'] = comment['Upvotes'] - comment['Downvotes']
+
+        currentVote = DatabaseManager.get_user_comment_vote(str(sessionInfo['currentUserID']), str(comment['CommentID']))
+        if currentVote==None:
+            comment['UserVote'] = 0
+        else:
+            comment['UserVote'] = currentVote['Vote']
 
         sql = "SELECT reply.Content, reply.DatetimePosted, reply.DatetimePosted, user.Username FROM reply"
         sql += " INNER JOIN user ON reply.UserID=user.UserID"
@@ -1313,6 +1330,7 @@ def deletePost(postID):
     return redirect('/adminHome')
 
 @app.route('/adminFeedback')
+@admin_required
 def adminFeedback():
     sessionInfo = sessions[sessionID]
     sql = "SELECT feedback.Content, feedback.DatetimePosted, feedback.Reason,feedback.FeedbackID, user.Username, user.Email "
@@ -1515,6 +1533,8 @@ def error401(e):
 def error403(e):
     msg = 'Oops! We seem to have encountered an error. Head back to the home page :)'
     title = 'Erorr 403'
+    createLog.log_error(request.path, 403, 'Forbidden Access to Admin Page by user %s' %sessionInfo['username'])
+    createLog.log_user_activity(sessionInfo['currentUserID'], sessionInfo['username'], 7)
     return render_template('error.html', msg=msg, title=title)
 
 @app.errorhandler(404)
@@ -1585,4 +1605,3 @@ def after_request(response):
 if __name__ == "__main__":
     ssl_context = ('server.crt', 'server.key')
     app.run(debug=False, ssl_context=ssl_context)
-    # app.run(debug=True)

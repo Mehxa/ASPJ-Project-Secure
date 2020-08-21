@@ -964,7 +964,6 @@ def resetPassword(url):
         flash("Your password reset link has expired, please try again!", "danger")
         return redirect("/home")
     else:
-        print("Yes")
         changePasswordForm = Forms.UpdatePassword(request.form)
         if request.method == "POST" and changePasswordForm.validate():
             print(user_to_url)

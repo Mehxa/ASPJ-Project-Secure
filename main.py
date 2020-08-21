@@ -507,7 +507,6 @@ def login():
                 else:
                     captcha_response = request.form['g-recaptcha-response']
                     if not is_human(captcha_response):
-                        print("U r a bot")
                     sessionInfo['login'] = True
                     sessionInfo['currentUserID'] = int(findUser['UserID'])
                     sessionInfo['username'] = findUser['Username']
@@ -575,9 +574,7 @@ def reactivate(secret):
             val = (secret,)
             dictCursor.execute(sql,val)
             user = dictCursor.fetchone()
-            # print("HIIIIIIIIIIIIIIi")
             createLog.log_user_activity(user['UserID'], user['Username'], 6)
-            print("HIIIIIIIIIIIIIIi")
             sql = "UPDATE user"
             sql += " SET Active=%s"
             sql += " , LoginAttempts=%s"
@@ -601,15 +598,12 @@ def reactivate(secret):
 @app.route('/resendReactivate/<userId>')
 def resendReactivate(userId):
         # get user email, previous secret
-        print("im here")
-        print(userId)
         sql = "SELECT Email, Username, Secret FROM user"
         sql += " INNER JOIN reactivate ON user.UserID=reactivate.UserID"
         sql += " WHERE user.UserID=%s"
         val = (userId,)
         dictCursor.execute(sql,val)
         user = dictCursor.fetchone()
-        print(user)
         # delete secret
         sql = "DELETE from reactivate WHERE UserID=%s"
         val = (userId,)
@@ -628,7 +622,6 @@ def resendReactivate(userId):
         # send email
         try:
             email = user["Email"]
-            print(email)
             msg = Message("Lorem Ipsum",
                 sender="deloremipsumonlinestore@outlook.com",
                 recipients=[email])
@@ -695,8 +688,6 @@ def signUp():
                 flash('The OTP will expire in 3 mins', 'warning')
                 return redirect('/login/' + str(link))
 
-        else:
-            print("U r a bot")
 
     return render_template('signup.html', currentPage='signUp', **sessionInfo, signUpForm = signUpForm, sitekey=sitekey)
 
@@ -960,7 +951,6 @@ def resetPassword(url):
     else:
         changePasswordForm = Forms.UpdatePassword(request.form)
         if request.method == "POST" and changePasswordForm.validate():
-            print(user_to_url)
             username = user_to_url[url]
             password_hash = bcrypt.generate_password_hash(changePasswordForm.password.data).decode("utf8")
             password = password_hash[7:]
@@ -1595,4 +1585,4 @@ def after_request(response):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)

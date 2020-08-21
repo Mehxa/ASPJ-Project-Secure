@@ -1599,9 +1599,7 @@ def handle_500(e):
 def after_request(response):
     response.headers['X-Content-Type-Options'] = 'NOSNIFF'
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
-    # response.headers.add('Access-Control-Allow-Origin', 'https://www.google.com')
     return response
 
 if __name__ == "__main__":
-    ssl_context = ('server.crt', 'server.key')
-    app.run(debug=False, ssl_context=ssl_context)
+    app.run(debug=False)
